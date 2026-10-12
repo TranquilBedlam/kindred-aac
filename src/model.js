@@ -7,7 +7,7 @@ export const WORDS = Object.freeze([
   ['like','💜','I like'],['different','🔀','Different'],['bathroom','🚻','Bathroom']
 ].map(([id,emoji,label])=>Object.freeze({id,emoji,label})));
 export class CommunicationModel {
-  constructor(words=WORDS){this.base=words.map(w=>({...w}));this.words=[...this.base];this.ids=new Set(this.words.map(w=>w.id));this.message=[];this.sequence=0;}
+  constructor(words=WORDS){this.base=words.map(w=>({...w}));this.words=this.base.map(w=>({...w}));this.ids=new Set(this.words.map(w=>w.id));this.message=[];this.sequence=0;}
   select(id){if(!this.ids.has(id))throw new Error('Unknown symbol');this.message.push(id);return this.phrase;}
   undo(){this.message.pop();return this.phrase;}
   clear(){this.message=[];}
@@ -31,6 +31,46 @@ export class CommunicationModel {
     this.validate(label,emoji,id);photo=this.validatePhoto(photo);item.label=label.trim();item.emoji=emoji||'💬';item.photo=photo;return {...item};
   }
   removeCustom(id){const item=this.words.find(w=>w.id===id);if(!item?.custom)throw new Error('Built-in words cannot be removed.');this.words=this.words.filter(w=>w.id!==id);this.ids.delete(id);this.message=this.message.filter(x=>x!==id);}
+  updateWord(id,label,emoji='💬',photo=null){
+    const item=this.words.find(w=>w.id===id);if(!item)throw new Error('Unknown symbol');
+    this.validate(label,emoji,id);photo=this.validatePhoto(photo);
+    item.label=label.trim();item.emoji=emoji||'💬';item.photo=photo;return {...item};
+  }
+  removeWord(id){
+    if(['help','stop','break'].includes(id))throw new Error('Help, Stop and Break stay available for safety. You can change their names or pictures.');
+    const item=this.words.find(w=>w.id===id);if(!item)throw new Error('Unknown symbol');
+    this.words=this.words.filter(w=>w.id!==id);this.ids.delete(id);this.message=this.message.filter(x=>x!==id);
+  }
+  restoreBuiltins(){
+    const custom=this.words.filter(w=>w.custom);
+    this.words=[...this.base.map(w=>({...w})),...custom];
+    this.ids=new Set(this.words.map(w=>w.id));
+    this.message=this.message.filter(id=>this.ids.has(id));
+  }
+  exportVocabulary(){
+    const builtins={};
+    for(const base of this.base){
+      const current=this.words.find(w=>w.id===base.id);
+      if(!current){builtins[base.id]=null;continue;}
+      if(current.label!==base.label||current.emoji!==base.emoji||(current.photo??null)!==null)
+        builtins[base.id]={label:current.label,emoji:current.emoji,photo:current.photo??null};
+    }
+    return {version:2,builtins,custom:this.exportCustom()};
+  }
+  importVocabulary(data){
+    if(Array.isArray(data)){this.importCustom(data);return;}
+    if(!data||data.version!==2||!Array.isArray(data.custom)||!data.builtins||typeof data.builtins!=='object'||Array.isArray(data.builtins))
+      throw new Error('Invalid saved vocabulary.');
+    const fresh=new CommunicationModel(this.base);fresh.importCustom(data.custom);
+    for(const [id,override] of Object.entries(data.builtins)){
+      if(!this.base.some(w=>w.id===id))throw new Error('Invalid built-in word ID.');
+      if(override===null){fresh.removeWord(id);continue;}
+      if(!override||typeof override!=='object')throw new Error('Invalid built-in word.');
+      fresh.updateWord(id,override.label,override.emoji,override.photo??null);
+    }
+    this.words=fresh.words;this.ids=fresh.ids;this.sequence=fresh.sequence;
+    this.message=this.message.filter(id=>this.ids.has(id));
+  }
   exportCustom(){return this.words.filter(w=>w.custom).map(w=>({...w}));}
   importCustom(data){
     if(!Array.isArray(data)||data.length>150)throw new Error('Invalid saved vocabulary.');
