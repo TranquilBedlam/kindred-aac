@@ -16,3 +16,5 @@
 .word-photo{height:54px;width:64px;object-fit:contain;border-radius:9px;display:block}.custom-row .word-photo{height:42px;width:48px;display:inline-block;vertical-align:middle;margin-right:8px}.caregiver input[type=file]{max-width:250px;width:100%}
 
 .talk-actions{flex-wrap:wrap}.talk-actions #open-parent-settings{min-height:48px}
+/* Parent Mode security: never allow author CSS to reveal elements with hidden attribute. */
+[hidden]{display:none!important}
