@@ -171,7 +171,12 @@ $('close').onclick=()=>{controller.close();render();};
 $('speak').onclick=()=>perform(()=>controller.speak());
 $('quick-mode').onclick=()=>{controller.setCommunicationMode('quick');render();};
 $('build-mode').onclick=()=>{controller.setCommunicationMode('build');render();};
-$('preview-voice').onclick=()=>perform(()=>speaker('Hello! This is my voice.'));
+$('preview-voice').onclick=()=>{
+ // Preview may cancel an earlier sample; regular AAC taps never cancel speech.
+ if('speechSynthesis' in window)window.speechSynthesis.cancel();
+ $('voice-settings-status').textContent='Previewing at pitch '+$('pitch').value+' and speed '+$('rate').value+'. If it sounds unchanged, try an on-device voice; some engines ignore these controls.';
+ perform(()=>speaker('Hello! This is my voice. Let us explore together and see how I sound today.'));
+};
 const voiceStorageKey='kindred-aac-preferred-voice-v1';
 const refreshVoices=()=>{
  if(!('speechSynthesis' in window))return;
@@ -196,7 +201,7 @@ $('voice').addEventListener('change',()=>{
 const tuningKey='kindred-aac-voice-tuning-v1';
 try{const saved=JSON.parse(localStorage.getItem(tuningKey)||'null');if(saved){for(const id of ['pitch','rate']){const value=String(saved[id]??'');if([...$(id).options].some(o=>o.value===value))$(id).value=value;}}}catch{}
 for(const id of ['pitch','rate'])$(id).addEventListener('change',()=>{
- try{localStorage.setItem(tuningKey,JSON.stringify({pitch:$('pitch').value,rate:$('rate').value}));$('voice-settings-status').textContent='Voice preferences saved on this device.';}
+ try{localStorage.setItem(tuningKey,JSON.stringify({pitch:$('pitch').value,rate:$('rate').value}));$('voice-settings-status').textContent='Preferences saved. Pitch '+$('pitch').value+', speed '+$('rate').value+'. Tap Preview to hear a new sample; your browser voice may ignore the adjustment.';}
  catch{$('voice-settings-status').textContent='Could not save voice preferences.';}
 });
 refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshVoices);
