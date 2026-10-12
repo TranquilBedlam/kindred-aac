@@ -100,9 +100,14 @@ let unlocked=false;
 let challenge=createChallenge();
 const storedPin=()=>{try{return JSON.parse(localStorage.getItem(parentKey)||'null');}catch{return null;}};
 const newChallenge=()=>{challenge=createChallenge();$('parent-question').textContent=`Adult question: ${challenge.a} + ${challenge.b} = ?`;$('parent-answer').value='';};
-const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;if(!value)newChallenge();};
+const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;$('parent-lock-label').textContent=value?'🔓 Unlocked':'🔒 Locked';if(!value)newChallenge();};
 newChallenge();
-$('caregiver-panel').addEventListener('toggle',()=>{if(!$('caregiver-panel').open)setUnlocked(false);});
+const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.remove('parent-active');setUnlocked(false);$('open-parent-settings').focus();};
+$('exit-parent').onclick=closeParent;
+const selectParentTab=tab=>{for(const el of document.querySelectorAll('[data-parent-tab]')){const current=el.dataset.parentTab===tab;el.classList.toggle('active',current);el.setAttribute('aria-selected',String(current));}for(const pane of document.querySelectorAll('[data-parent-pane]'))pane.hidden=pane.dataset.parentPane!==tab;};
+for(const tab of document.querySelectorAll('[data-parent-tab]'))tab.onclick=()=>selectParentTab(tab.dataset.parentTab);
+$('go-voice').onclick=()=>{closeParent();if(controller.mode==='closed'){controller.open();render();}$('voice').focus();$('voice').scrollIntoView({block:'center'});};
+$('word-search').oninput=()=>{const q=$('word-search').value.trim().toLowerCase();for(const el of $('custom-list').querySelectorAll('.custom-row')){const next=el.nextElementSibling;const hide=!el.textContent.toLowerCase().includes(q);el.hidden=hide;if(next?.classList.contains('edit-word'))next.hidden=hide;}};
 $('unlock-parent').onsubmit=async e=>{
  e.preventDefault();
  const answer=$('parent-answer').value.trim(),record=storedPin();
@@ -159,13 +164,7 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
  model.restoreBuiltins();saveVocabulary();$('edit-status').textContent='Original words restored. Your added words are unchanged.';renderVocabulary();render();
 };
 renderVocabulary();
-$('open-parent-settings').onclick=()=>{
- // Caregiver controls are nested in the pad; make both containers visible.
- if(controller.mode==='closed'){controller.open();render();}
- const panel=$('caregiver-panel');panel.open=true;
- panel.scrollIntoView({behavior:'auto',block:'start'});
- if($('parent-gate').hidden){$('lock-parent').focus();}else{$('parent-answer').focus();}
-};
+$('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
 $('talk').onclick=()=>{if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
 $('pin').onclick=()=>{if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
 $('close').onclick=()=>{controller.close();render();};

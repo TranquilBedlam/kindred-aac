@@ -18,3 +18,21 @@
 .talk-actions{flex-wrap:wrap}.talk-actions #open-parent-settings{min-height:48px}
 /* Parent Mode security: never allow author CSS to reveal elements with hidden attribute. */
 [hidden]{display:none!important}
+
+/* v0.12 dedicated caregiver dashboard */
+.parent-active .lesson,.parent-active .talk-controls,.parent-active #pad,.parent-active footer{display:none!important}
+.parent-screen{max-width:1060px;margin:24px auto;background:#fff;border:1px solid #d7e3ec;border-radius:24px;padding:clamp(16px,3vw,36px);box-shadow:0 16px 45px #1c3f5a12}
+.parent-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.parent-header h2{font-size:clamp(25px,3vw,34px);margin:8px 0}.parent-header p{color:#65778a}
+.parent-lock-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#edf5fa;padding:14px 18px;border-radius:14px;margin:18px 0;flex-wrap:wrap}
+.parent-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0}
+.parent-tab{min-height:66px;border:1px solid #cadce8;border-radius:14px;background:#f7fafc;font:inherit;font-weight:700;color:#294860;cursor:pointer}
+.parent-tab.active,.parent-tab[aria-selected=true]{background:#225b85;color:white;border-color:#225b85}
+.parent-pane{background:#fbfdff;border:1px solid #e4edf3;border-radius:16px;padding:clamp(14px,3vw,26px)}
+.parent-pane h3{margin:0 0 10px;font-size:22px}.parent-pane .search-label{display:block;font-weight:700;margin:16px 0 7px}
+#word-search{width:100%;min-height:48px;background:white;border:1px solid #b8cad9;border-radius:12px;padding:10px 14px;font:inherit;margin-bottom:16px}
+#custom-list{display:grid;gap:10px}.custom-row{padding:12px 14px;border:1px solid #dfe8ef;border-radius:12px;background:white}
+.parent-pane button{min-height:44px}
+.parent-screen #parent-gate{max-width:580px;margin:auto}.parent-screen #parent-gate form{display:flex;flex-direction:column;align-items:stretch}
+.parent-screen #parent-gate input{width:100%;max-width:100%}
+@media(max-width:670px){.parent-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.parent-tab{min-height:58px}.parent-screen{margin:12px 0;padding:16px}.parent-header #exit-parent{width:100%}}
