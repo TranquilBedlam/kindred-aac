@@ -2,9 +2,10 @@ import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
 const model=new CommunicationModel(),lesson=new LessonModel();
-const storageKey='kindred-aac-custom-vocabulary-v1';
-try{const saved=localStorage.getItem(storageKey);if(saved)model.importCustom(JSON.parse(saved));}catch(e){console.warn('Could not load custom vocabulary',e);}
-const saveVocabulary=()=>{try{localStorage.setItem(storageKey,JSON.stringify(model.exportCustom()));return true;}catch(e){$('edit-status').textContent='Could not save on this device. Check available storage.';return false;}};
+const storageKey='kindred-aac-vocabulary-v2';
+const legacyStorageKey='kindred-aac-custom-vocabulary-v1';
+try{const saved=localStorage.getItem(storageKey)||localStorage.getItem(legacyStorageKey);if(saved)model.importVocabulary(JSON.parse(saved));}catch(e){console.warn('Could not load custom vocabulary',e);}
+const saveVocabulary=()=>{try{localStorage.setItem(storageKey,JSON.stringify(model.exportVocabulary()));return true;}catch(e){$('edit-status').textContent='Could not save on this device. Check available storage.';return false;}};
 
 // Speak from the same direct tap event. Do not cancel immediately before every
 // utterance: on some browsers that silences the first requested word.
@@ -97,9 +98,9 @@ const renderVocabulary=()=>{
  $('vocab').replaceChildren();
  for(const word of model.words){const button=document.createElement('button');button.className='symbol'+(['help','stop','break','hurt'].includes(word.id)?' urgent':'');button.type='button';button.setAttribute('aria-label',word.label);const icon=visualFor(word);const label=document.createElement('span');label.textContent=word.label;button.append(icon,label);button.onclick=()=>{controller.selectAndSpeak(word.id).catch(e=>{$('speech-status').textContent=e.message;});render();};$('vocab').append(button);}
  $('custom-list').replaceChildren();
- for(const w of model.words.filter(w=>w.custom)){
+ for(const w of model.words){
    const row=document.createElement('div');row.className='custom-row';
-   const label=document.createElement('span');label.textContent=w.label+' ';label.prepend(visualFor(w));
+   const label=document.createElement('span');label.textContent=w.label+(w.custom?'':' (built-in)')+' ';label.prepend(visualFor(w));
    const edit=document.createElement('button');edit.type='button';edit.className='quiet';edit.textContent='Change word / icon';
    const editor=document.createElement('form');editor.className='edit-word hidden';
    const textLabel=document.createElement('label');textLabel.textContent='Word or phrase';
@@ -114,12 +115,16 @@ const renderVocabulary=()=>{
    const cancel=document.createElement('button');cancel.type='button';cancel.className='quiet';cancel.textContent='Cancel';cancel.onclick=()=>editor.classList.add('hidden');
    editor.append(textLabel,symbolLabel,photoLabel,useIcon,picker,save,cancel);
    edit.onclick=()=>{editor.classList.toggle('hidden');if(!editor.classList.contains('hidden'))symbolInput.focus();};
-   editor.onsubmit=async e=>{e.preventDefault();try{const photo=noPhoto.checked?null:photoInput.files?.length?await compressPhoto(photoInput.files[0]):w.photo??null;model.updateCustom(w.id,wordInput.value,symbolInput.value,photo);if(!saveVocabulary())return;$('edit-status').textContent='Saved changes to '+wordInput.value.trim();renderVocabulary();render();}catch(error){$('edit-status').textContent=error.message;}};
-   const del=document.createElement('button');del.type='button';del.className='quiet';del.textContent='Remove';del.onclick=()=>{if(!confirm('Remove '+w.label+' from the pad?'))return;model.removeCustom(w.id);saveVocabulary();$('edit-status').textContent='Removed '+w.label;renderVocabulary();render();};
+   editor.onsubmit=async e=>{e.preventDefault();try{const photo=noPhoto.checked?null:photoInput.files?.length?await compressPhoto(photoInput.files[0]):w.photo??null;model.updateWord(w.id,wordInput.value,symbolInput.value,photo);if(!saveVocabulary())return;$('edit-status').textContent='Saved changes to '+wordInput.value.trim();renderVocabulary();render();}catch(error){$('edit-status').textContent=error.message;}};
+   const del=document.createElement('button');del.type='button';del.className='quiet';del.textContent='Remove';del.disabled=['help','stop','break'].includes(w.id);del.title=del.disabled?'This essential communication button cannot be removed':'';del.onclick=()=>{if(!confirm('Remove '+w.label+' from the pad?'))return;try{model.removeWord(w.id);}catch(err){$('edit-status').textContent=err.message;return;}saveVocabulary();$('edit-status').textContent='Removed '+w.label;renderVocabulary();render();};
    row.append(label,edit,del);$('custom-list').append(row,editor);
  }
 };
 $('add-word').onsubmit=async e=>{e.preventDefault();try{const photo=await compressPhoto($('new-photo').files?.[0]);const w=model.addCustom($('new-word').value,$('new-symbol').value,photo);saveVocabulary();$('new-word').value='';$('new-symbol').value='💬';$('new-photo').value='';$('add-icon-picker').resetSelection();$('edit-status').textContent='Added '+w.label;renderVocabulary();render();}catch(err){$('edit-status').textContent=err.message;}};
+$('restore-builtins').onclick=()=>{
+ if(!confirm('Restore all original built-in words and pictures? Your added words will stay.'))return;
+ model.restoreBuiltins();saveVocabulary();$('edit-status').textContent='Original words restored. Your added words are unchanged.';renderVocabulary();render();
+};
 renderVocabulary();
 $('talk').onclick=()=>{if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
 $('pin').onclick=()=>{if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
