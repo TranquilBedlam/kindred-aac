@@ -1,0 +1,65 @@
+export const WORDS = Object.freeze([
+  ['help','🆘','Help'],['stop','✋','Stop'],['break','🌤️','Break'],
+  ['yes','✅','Yes'],['no','❌','No'],['hurt','🩹','Hurt'],
+  ['want','💬','I want'],['water','💧','Water'],['eat','🍎','Eat'],
+  ['play','🧸','Play'],['more','➕','More'],['again','🔁','Again'],
+  ['please','🙏','Please'],['thank-you','💜','Thank you'],
+  ['like','💜','I like'],['different','🔀','Different'],['bathroom','🚻','Bathroom']
+].map(([id,emoji,label])=>Object.freeze({id,emoji,label})));
+export class CommunicationModel {
+  constructor(words=WORDS){this.base=words.map(w=>({...w}));this.words=[...this.base];this.ids=new Set(this.words.map(w=>w.id));this.message=[];this.sequence=0;}
+  select(id){if(!this.ids.has(id))throw new Error('Unknown symbol');this.message.push(id);return this.phrase;}
+  undo(){this.message.pop();return this.phrase;}
+  clear(){this.message=[];}
+  get phrase(){return this.message.map(id=>this.words.find(w=>w.id===id)?.label||'').filter(Boolean).join(' ');}
+  validate(label,emoji,exclude=null){
+    if(typeof label!=='string'||!label.trim()||label.trim().length>100)throw new Error('Enter a word or phrase (1–100 characters).');
+    if(typeof emoji!=='string'||emoji.length>16)throw new Error('Invalid symbol.');
+    if(this.words.some(w=>w.id!==exclude&&w.label.toLowerCase()===label.trim().toLowerCase()))throw new Error('This word or phrase already exists.');
+  }
+  validatePhoto(photo){
+    if(photo==null)return null;
+    if(typeof photo!=='string'||photo.length>140000||!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(photo))throw new Error('Invalid or oversized photo.');
+    return photo;
+  }
+  addCustom(label,emoji='💬',photo=null){
+    this.validate(label,emoji);photo=this.validatePhoto(photo);this.sequence++;const entry={id:'custom-'+this.sequence,label:label.trim(),emoji:emoji||'💬',photo,custom:true};
+    this.words.push(entry);this.ids.add(entry.id);return {...entry};
+  }
+  updateCustom(id,label,emoji='💬',photo=null){
+    const item=this.words.find(w=>w.id===id);if(!item?.custom)throw new Error('Built-in words cannot be edited.');
+    this.validate(label,emoji,id);photo=this.validatePhoto(photo);item.label=label.trim();item.emoji=emoji||'💬';item.photo=photo;return {...item};
+  }
+  removeCustom(id){const item=this.words.find(w=>w.id===id);if(!item?.custom)throw new Error('Built-in words cannot be removed.');this.words=this.words.filter(w=>w.id!==id);this.ids.delete(id);this.message=this.message.filter(x=>x!==id);}
+  exportCustom(){return this.words.filter(w=>w.custom).map(w=>({...w}));}
+  importCustom(data){
+    if(!Array.isArray(data)||data.length>150)throw new Error('Invalid saved vocabulary.');
+    const fresh=new CommunicationModel(this.base);
+    const seen=new Set();
+    for(const item of data){
+      if(!item||typeof item.id!=='string'||!/^custom-[1-9][0-9]*$/.test(item.id)||seen.has(item.id)||fresh.ids.has(item.id))throw new Error('Invalid or reserved saved vocabulary ID.');
+      fresh.validate(item.label,item.emoji);const photo=fresh.validatePhoto(item.photo??null);seen.add(item.id);
+      fresh.words.push({id:item.id,label:item.label.trim(),emoji:item.emoji||'💬',photo,custom:true});fresh.ids.add(item.id);
+      fresh.sequence=Math.max(fresh.sequence,Number(item.id.slice(7)));
+    }
+    this.words=fresh.words;this.ids=fresh.ids;this.sequence=fresh.sequence;this.message=this.message.filter(id=>this.ids.has(id));
+  }
+}
+export class LessonModel {
+  constructor(){this.activity='story';this.choice=null;this.paused=false;}
+  choose(choice){ if(!['Bears','Space'].includes(choice))throw new Error('Invalid choice');this.choice=choice;}
+  pause(){this.paused=true;}
+  resume(){this.paused=false;}
+}
+export class PadController {
+  constructor(model,lesson,speaker){this.model=model;this.lesson=lesson;this.speaker=speaker;this.mode='closed';this.communicationMode='quick';}
+  open(mode='slide'){if(!['slide','always'].includes(mode))throw new Error('Invalid pad mode');this.mode=mode;if(mode==='slide')this.lesson.pause();else this.lesson.resume();}
+  close(){this.mode='closed';this.lesson.resume();}
+  setCommunicationMode(mode){if(!['quick','build'].includes(mode))throw new Error('Invalid communication mode');if(this.communicationMode!==mode){this.model.clear();this.communicationMode=mode;}}
+  select(id){return this.model.select(id);}
+  async selectAndSpeak(id){const word=this.model.words.find(w=>w.id===id);if(!word)throw new Error('Unknown symbol');if(this.communicationMode==='quick')this.model.clear();this.model.select(id);await this.speaker(word.label);return this.model.phrase;}
+  undo(){return this.model.undo();}
+  clear(){this.model.clear();}
+  async speak(){const phrase=this.model.phrase;if(!phrase)return false;await this.speaker(phrase);return true;}
+  async urgent(id){if(!['help','stop','break','hurt','no','yes'].includes(id))throw new Error('Not an urgent word');const label=this.model.words.find(w=>w.id===id)?.label;if(!label)throw new Error('Unavailable urgent word');await this.speaker(label);return true;}
+}
