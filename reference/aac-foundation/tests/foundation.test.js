@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {CORE_WORDS} from '../src/model/vocabulary.js';
+import {CommunicationModel} from '../src/model/communicationModel.js';
+import {CommunicationController} from '../src/controller/communicationController.js';
+import {SpeechService} from '../src/services/speechService.js';
+import {LessonModel} from '../src/model/lessonModel.js';
+function make(){const calls=[];const model=new CommunicationModel();const controller=new CommunicationController(model,new SpeechService(async text=>calls.push(text)));return {calls,model,controller};}
+test('Communication: essential words always included',()=>{const {model}=make();for(const id of ['help','stop','break','no','yes','hurt'])assert.ok(model.vocabulary.find(w=>w.id===id));});
+test('Communication: selects exact child chosen symbols and speaks exactly that phrase',async()=>{const {calls,controller}=make();controller.selectSymbol('more');controller.selectSymbol('play');await controller.speak();assert.deepEqual(calls,['More Play']);});
+test('Communication: no silent speech from empty selection',async()=>{const {calls,controller}=make();assert.equal(await controller.speak(),false);assert.equal(calls.length,0);});
+test('Communication: unknown symbol rejected',()=>{assert.throws(()=>make().controller.selectSymbol('not-a-word'),/Unknown/);});
+test('Communication: remove an essential symbol rejected',()=>{const {model}=make();assert.throws(()=>model.replaceVocabulary(CORE_WORDS.filter(w=>w.id!=='stop')),/essential/);});
+test('Communication: messages persist across vocabulary customization',()=>{const {model}=make();model.select('play');assert.throws(()=>model.replaceVocabulary(CORE_WORDS.filter(w=>w.id!=='play')),/current message/);assert.equal(model.phrase,'Play');});
+test('Communication: undo and clear explicit',()=>{const {controller,model}=make();controller.selectSymbol('play');controller.selectSymbol('more');controller.undo();assert.equal(model.phrase,'Play');controller.clear();assert.equal(model.phrase,'');});
+test('Independent essential phrase: stop works with unfinished lesson',async()=>{const {calls,controller}=make();const lesson=new LessonModel();lesson.start('story');await controller.speakEssential('stop');assert.deepEqual(calls,['Stop']);assert.equal(lesson.snapshot.status,'active');});
+test('Lesson: pause and resume preserve current choice',()=>{const l=new LessonModel();l.start('story');l.choose('blue');l.pause();assert.deepEqual(l.snapshot,{status:'paused',activity:'story',choice:'blue'});l.resume();assert.equal(l.snapshot.choice,'blue');});
+test('Lesson: cannot choose while paused',()=>{const l=new LessonModel();l.start('play');l.pause();assert.throws(()=>l.choose('ball'),/not active/);});
+test('Lesson: rejects unrecognized activities',()=>{assert.throws(()=>new LessonModel().start('exam'),/Unknown/);});
+test('Communication: speech adapter error does not corrupt selected message',async()=>{const model=new CommunicationModel();model.select('help');const controller=new CommunicationController(model,new SpeechService(async()=>{throw new Error('speaker failed')}));await assert.rejects(controller.speak(),/speaker failed/);assert.equal(model.phrase,'Help');});
