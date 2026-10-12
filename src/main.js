@@ -1,3 +1,4 @@
+import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
@@ -93,6 +94,38 @@ function buildIconPicker(host,input){
  // Expose reset for adding multiple custom words without rebuilding the editor.
  host.resetSelection=()=>{showCategory('Symbols');updatePicker();};
 }
+// Caregiver access controls never wrap or disable the communication buttons.
+const parentKey='kindred-parent-pin-v1';
+let unlocked=false;
+let challenge=createChallenge();
+const storedPin=()=>{try{return JSON.parse(localStorage.getItem(parentKey)||'null');}catch{return null;}};
+const newChallenge=()=>{challenge=createChallenge();$('parent-question').textContent=`Adult question: ${challenge.a} + ${challenge.b} = ?`;$('parent-answer').value='';};
+const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;if(!value)newChallenge();};
+newChallenge();
+$('caregiver-panel').addEventListener('toggle',()=>{if(!$('caregiver-panel').open)setUnlocked(false);});
+$('unlock-parent').onsubmit=async e=>{
+ e.preventDefault();
+ const answer=$('parent-answer').value.trim(),record=storedPin();
+ let okay=false;
+ if(record){okay=validPin(answer)&&await pinDigest(answer,record.salt)===record.digest;}
+ else okay=verifyChallenge(challenge.a,challenge.b,answer);
+ if(okay){$('parent-status').textContent='';setUnlocked(true);}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
+};
+$('lock-parent').onclick=()=>setUnlocked(false);
+$('set-parent-pin').onclick=async()=>{
+ if(!unlocked)return;
+ const pin=$('parent-pin').value;
+ if(!validPin(pin)){$('edit-status').textContent='Use 4 to 8 digits for the PIN.';return;}
+ if(!confirm('Set this device’s caregiver PIN? Remember it: losing it may require clearing local data.'))return;
+ const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
+ try{localStorage.setItem(parentKey,JSON.stringify({salt,digest:await pinDigest(pin,salt)}));$('edit-status').textContent='Caregiver PIN saved on this browser.';$('parent-pin').value='';}
+ catch{$('edit-status').textContent='Could not save PIN on this device.';}
+};
+$('remove-parent-pin').onclick=()=>{
+ if(!unlocked||!storedPin())return;
+ if(!confirm('Remove this caregiver PIN? Future access will use an adult question.'))return;
+ try{localStorage.removeItem(parentKey);$('edit-status').textContent='Caregiver PIN removed.';}catch{$('edit-status').textContent='Could not remove PIN.';}
+};
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
 const renderVocabulary=()=>{
  $('vocab').replaceChildren();
