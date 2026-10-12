@@ -118,18 +118,26 @@ $('unlock-parent').onsubmit=async e=>{
 };
 $('lock-parent').onclick=()=>setUnlocked(false);
 $('set-parent-pin').onclick=async()=>{
- if(!unlocked)return;
- const pin=$('parent-pin').value;
- if(!validPin(pin)){$('edit-status').textContent='Use 4 to 8 digits for the PIN.';return;}
- if(!confirm('Set this device’s caregiver PIN? Remember it: losing it may require clearing local data.'))return;
- const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
- try{localStorage.setItem(parentKey,JSON.stringify({salt,digest:await pinDigest(pin,salt)}));$('edit-status').textContent='Caregiver PIN saved on this browser.';$('parent-pin').value='';}
- catch{$('edit-status').textContent='Could not save PIN on this device.';}
+ const status=$('pin-status');
+ if(!unlocked){status.textContent='Unlock Parent Settings first.';return;}
+ const pin=$('parent-pin').value.trim();
+ if(!validPin(pin)){status.textContent='PIN must contain 4 to 8 numbers only.';return;}
+ if(!confirm('Save this caregiver PIN on this device? You will need to remember it.')){status.textContent='PIN setup cancelled.';return;}
+ try{
+  if(!globalThis.crypto?.subtle||!globalThis.crypto?.getRandomValues)throw new Error('Secure browser features are unavailable. Open the HTTPS demo in a modern browser.');
+  const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const digest=await pinDigest(pin,salt);
+  localStorage.setItem(parentKey,JSON.stringify({salt,digest}));
+  const readBack=storedPin();
+  if(readBack?.digest!==digest)throw new Error('Unable to verify saved PIN.');
+  $('parent-pin').value='';
+  status.textContent='✓ PIN saved. Select Lock settings, then enter your PIN to unlock.';
+ }catch(err){status.textContent='PIN not saved: '+(err?.message||'browser storage unavailable');}
 };
 $('remove-parent-pin').onclick=()=>{
  if(!unlocked||!storedPin())return;
  if(!confirm('Remove this caregiver PIN? Future access will use an adult question.'))return;
- try{localStorage.removeItem(parentKey);$('edit-status').textContent='Caregiver PIN removed.';}catch{$('edit-status').textContent='Could not remove PIN.';}
+ try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';}catch{$('pin-status').textContent='Could not remove PIN.';}
 };
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
 const renderVocabulary=()=>{
