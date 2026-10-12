@@ -99,7 +99,15 @@ const parentKey='kindred-parent-pin-v1';
 let unlocked=false;
 let challenge=createChallenge();
 const storedPin=()=>{try{return JSON.parse(localStorage.getItem(parentKey)||'null');}catch{return null;}};
-const newChallenge=()=>{challenge=createChallenge();$('parent-question').textContent=`Adult question: ${challenge.a} + ${challenge.b} = ?`;$('parent-answer').value='';};
+const newChallenge=()=>{
+ challenge=createChallenge();
+ const hasPin=Boolean(storedPin());
+ $('parent-question').textContent=hasPin?'Enter caregiver PIN':`Adult question: ${challenge.a} + ${challenge.b} = ?`;
+ $('parent-answer').value='';
+ $('parent-answer').setAttribute('autocomplete',hasPin?'current-password':'off');
+ $('parent-answer').setAttribute('maxlength',hasPin?'8':'3');
+ $('parent-unlock-hint').textContent=hasPin?'Enter your saved 4–8 digit PIN to unlock settings.':'Answer the adult question to unlock caregiver settings.';
+};
 const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;$('parent-lock-label').textContent=value?'🔓 Unlocked':'🔒 Locked';if(!value)newChallenge();};
 newChallenge();
 const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.remove('parent-active');setUnlocked(false);$('open-parent-settings').focus();};
@@ -131,13 +139,13 @@ $('set-parent-pin').onclick=async()=>{
   const readBack=storedPin();
   if(readBack?.digest!==digest)throw new Error('Unable to verify saved PIN.');
   $('parent-pin').value='';
-  status.textContent='✓ PIN saved. Select Lock settings, then enter your PIN to unlock.';
+  status.textContent='✓ PIN saved. Select Lock settings, then enter your PIN to unlock.';newChallenge();
  }catch(err){status.textContent='PIN not saved: '+(err?.message||'browser storage unavailable');}
 };
 $('remove-parent-pin').onclick=()=>{
  if(!unlocked||!storedPin())return;
  if(!confirm('Remove this caregiver PIN? Future access will use an adult question.'))return;
- try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';}catch{$('pin-status').textContent='Could not remove PIN.';}
+ try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';newChallenge();}catch{$('pin-status').textContent='Could not remove PIN.';}
 };
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
 const renderVocabulary=()=>{
