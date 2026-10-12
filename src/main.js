@@ -106,7 +106,7 @@ const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.
 $('exit-parent').onclick=closeParent;
 const selectParentTab=tab=>{for(const el of document.querySelectorAll('[data-parent-tab]')){const current=el.dataset.parentTab===tab;el.classList.toggle('active',current);el.setAttribute('aria-selected',String(current));}for(const pane of document.querySelectorAll('[data-parent-pane]'))pane.hidden=pane.dataset.parentPane!==tab;};
 for(const tab of document.querySelectorAll('[data-parent-tab]'))tab.onclick=()=>selectParentTab(tab.dataset.parentTab);
-$('go-voice').onclick=()=>{closeParent();if(controller.mode==='closed'){controller.open();render();}$('voice').focus();$('voice').scrollIntoView({block:'center'});};
+
 $('word-search').oninput=()=>{const q=$('word-search').value.trim().toLowerCase();for(const el of $('custom-list').querySelectorAll('.custom-row')){const next=el.nextElementSibling;const hide=!el.textContent.toLowerCase().includes(q);el.hidden=hide;if(next?.classList.contains('edit-word'))next.hidden=hide;}};
 $('unlock-parent').onsubmit=async e=>{
  e.preventDefault();
@@ -190,9 +190,15 @@ const refreshVoices=()=>{
  $('voice-hint').textContent=google?'Google US English is available. Preview it to hear whether it suits your child. This is not a verified boy voice.':'Google US English is not offered by this browser. Choose another voice and use Hear voice to preview it.';
 };
 $('voice').addEventListener('change',()=>{
- try{localStorage.setItem(voiceStorageKey,$('voice').value);}catch{}
+ try{localStorage.setItem(voiceStorageKey,$('voice').value);$('voice-settings-status').textContent='Voice preference saved on this device.';}catch{$('voice-settings-status').textContent='Could not save voice selection.';}
 });
 
+const tuningKey='kindred-aac-voice-tuning-v1';
+try{const saved=JSON.parse(localStorage.getItem(tuningKey)||'null');if(saved){for(const id of ['pitch','rate']){const value=String(saved[id]??'');if([...$(id).options].some(o=>o.value===value))$(id).value=value;}}}catch{}
+for(const id of ['pitch','rate'])$(id).addEventListener('change',()=>{
+ try{localStorage.setItem(tuningKey,JSON.stringify({pitch:$('pitch').value,rate:$('rate').value}));$('voice-settings-status').textContent='Voice preferences saved on this device.';}
+ catch{$('voice-settings-status').textContent='Could not save voice preferences.';}
+});
 refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshVoices);
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
