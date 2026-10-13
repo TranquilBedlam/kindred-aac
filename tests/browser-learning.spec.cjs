@@ -28,3 +28,18 @@ test('AAC is available during story, Maya can be hidden',async({page})=>{
  await page.locator('#close').click();
  await expect(page.locator('#learning-progress')).toHaveText('Page 1 of 3');
 });
+
+test('Maya original image layers load, can be hidden and do not block AAC',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('.story[data-choice="Bears"]').click();
+ const stage=page.locator('#maya-portrait .tp-stage');
+ await expect(stage).toBeVisible();
+ await expect(stage.locator('img')).toHaveCount(5);
+ const valid=await stage.locator('img').evaluateAll(images=>images.every(im=>im.complete&&im.naturalWidth>0));
+ expect(valid).toBe(true);
+ await page.locator('#maya-toggle').click();
+ await expect(page.locator('#maya-portrait')).toBeHidden();
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await expect(page.locator('#vocab button').first()).toHaveAttribute('aria-label','Help');
+});
