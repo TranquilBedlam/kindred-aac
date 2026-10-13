@@ -1,0 +1,39 @@
+name: Publish Kindred AAC Website
+on:
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: kindred-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out published app
+        uses: actions/checkout@v4
+      - name: Confirm website entry and Maya story assets
+        run: |
+          test -s index.html
+          test -s src/main.js
+          test -s src/maya/characters/maya/layers.json
+          grep -q "lost his favorite blue scarf" src/main.js
+          grep -q 'v=0.17.3' index.html
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload website files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
