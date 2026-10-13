@@ -105,7 +105,7 @@ export class CommunicationModel {
 export class LessonModel {
   constructor(){this.activity='story';this.choice=null;this.discovery=null;this.lastEvent='';this.path=[];this.step=0;this.completed=false;this.paused=false;}
   choose(choice){ if(!['Bears','Space'].includes(choice))throw new Error('Invalid choice');this.choice=choice;this.discovery=null;this.lastEvent='';this.path=[];this.step=0;this.completed=false;}
-  explore(item){const options=this.choice==='Bears'?['Bear','Trees']:this.choice==='Space'?['Rocket','Moon']:[];if(!options.includes(item))throw new Error('Choose a story picture first');this.discovery=item;this.path.push(item);this.step=Math.min(3,this.step+1);this.completed=this.step===3;}
+  explore(item){const options=this.choice==='Bears'?[['Look under leaves','Follow the footprints'],['Ask the bird','Reach for the branch'],['Thank the bird','Head home']][this.step]||[]:this.choice==='Space'?['Rocket','Moon']:[];if(!options.includes(item))throw new Error('Choose a story picture first');this.discovery=item;this.path.push(item);this.step=Math.min(3,this.step+1);this.completed=this.step===3;}
   back(){this.choice=null;this.discovery=null;this.lastEvent='';this.path=[];this.step=0;this.completed=false;}
   pause(){this.paused=true;}
   resume(){this.paused=false;}
