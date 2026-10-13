@@ -51,33 +51,57 @@ function visualFor(word){
 }
 const controller=new PadController(model,lesson,speaker);
 
-const learningScenes={
- Bears:[{name:'Bear',emoji:'🐻',feedback:'You found a bear!'},{name:'Trees',emoji:'🌲',feedback:'You found trees!'}],
- Space:[{name:'Rocket',emoji:'🚀',feedback:'You found a rocket!'},{name:'Moon',emoji:'🌙',feedback:'You found the moon!'}]
+const storyScenes={
+ Bears:[
+  {line:'A little bear wakes up in the forest. What should the bear explore?',choices:[['Bear','🐻'],['Trees','🌲']]},
+  {line:'The bear goes for a walk. Look around! What can we see?',choices:[['Trees','🌲'],['Bear','🐻']]},
+  {line:'The bear is ready to rest. Choose a picture to finish the story.',choices:[['Bear','🐻'],['Trees','🌲']]}
+ ],
+ Space:[
+  {line:'A rocket is getting ready for space. Where shall we look?',choices:[['Rocket','🚀'],['Moon','🌙']]},
+  {line:'Whoosh! We are flying in space. What do we see?',choices:[['Moon','🌙'],['Rocket','🚀']]},
+  {line:'Our space adventure is nearly over. Choose a picture to finish.',choices:[['Rocket','🚀'],['Moon','🌙']]}
+ ]
+};
+const tellStory=(words)=>{
+ try{
+  // Called only directly from a child/caregiver tap to satisfy mobile audio policies.
+  speaker(words);
+  $('learning-voice-status').textContent='Narration requested. If silent, check device volume or tap Hear story again.';
+ }catch(error){$('learning-voice-status').textContent=error.message;}
 };
 const renderLearning=()=>{
  const area=$('learning-step');area.hidden=!lesson.choice;
  if(!lesson.choice)return;
- $('learning-heading').textContent=lesson.choice==='Bears'?'Explore the forest':'Explore space';
+ const scenes=storyScenes[lesson.choice];
+ $('learning-heading').textContent=lesson.choice==='Bears'?'The Little Forest Bear':'A Rocket Adventure';
+ $('learning-progress').textContent=lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
+ const scene=lesson.completed?null:scenes[lesson.step];
+ $('learning-narration').textContent=scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('learning-replay').textContent=lesson.completed?'Play story again':'🔊 Hear story again';
  const options=$('learning-options');options.replaceChildren();
- for(const option of learningScenes[lesson.choice]){
+ if(!scene)return;
+ for(const [name,emoji] of scene.choices){
   const button=document.createElement('button');button.type='button';button.className='learning-option';
-  button.setAttribute('aria-pressed',String(lesson.discovery===option.name));
-  const picture=document.createElement('span');picture.textContent=option.emoji;picture.setAttribute('aria-hidden','true');
-  const name=document.createElement('strong');name.textContent=option.name;
-  button.append(picture,name);
+  button.setAttribute('aria-label',name);
+  const picture=document.createElement('span');picture.textContent=emoji;picture.setAttribute('aria-hidden','true');
+  const word=document.createElement('strong');word.textContent=name;
+  button.append(picture,word);
   button.onclick=()=>{
    if(lesson.paused)return;
-   lesson.explore(option.name);
-   // Informational narration is optional; visual feedback works with sound off.
-   try{speaker(option.name);}catch(error){$('lesson-status').textContent=error.message;}
+   lesson.explore(name);
    render();
+   tellStory(lesson.completed?'The end! Great exploring!':`You picked ${name}. ${scenes[lesson.step].line}`);
   };
   options.append(button);
  }
 };
-$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));render();};
-
+$('learning-replay').onclick=()=>{
+ if(lesson.paused)return;
+ if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
+ tellStory($('learning-narration').textContent);
+};
+$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -90,7 +114,7 @@ const render=()=>{
  $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
  $('close').hidden=controller.mode==='always';
  renderLearning();
- $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.discovery?`You chose ${lesson.discovery}. Explore more or open Talk anytime.`:lesson.choice?`Explore ${lesson.choice}, or open Talk anytime.`:'You can choose a story, or open Talk anytime.';
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
 };
 const perform=async fn=>{try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
 function buildIconPicker(host,input){
@@ -360,5 +384,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();
