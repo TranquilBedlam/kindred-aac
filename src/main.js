@@ -116,7 +116,7 @@ newChallenge();
 const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.remove('parent-active');setUnlocked(false);$('open-parent-settings').focus();};
 $('exit-parent').onclick=closeParent;
 const selectParentTab=tab=>{for(const el of document.querySelectorAll('[data-parent-tab]')){const current=el.dataset.parentTab===tab;el.classList.toggle('active',current);el.setAttribute('aria-selected',String(current));}for(const pane of document.querySelectorAll('[data-parent-pane]'))pane.hidden=pane.dataset.parentPane!==tab;};
-for(const tab of document.querySelectorAll('[data-parent-tab]'))tab.onclick=()=>selectParentTab(tab.dataset.parentTab);
+for(const tab of document.querySelectorAll('[data-parent-tab]'))tab.onclick=()=>{selectParentTab(tab.dataset.parentTab);if(tab.dataset.parentTab==='arrange')renderArrange();};
 
 $('word-search').oninput=()=>{const q=$('word-search').value.trim().toLowerCase();for(const el of $('custom-list').querySelectorAll('.custom-row')){const next=el.nextElementSibling;const hide=!el.textContent.toLowerCase().includes(q);el.hidden=hide;if(next?.classList.contains('edit-word'))next.hidden=hide;}};
 $('unlock-parent').onsubmit=async e=>{
@@ -181,9 +181,83 @@ $('remove-parent-pin').onclick=()=>{
  try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;newChallenge();}catch{$('pin-status').textContent='Could not remove PIN.';}
 };
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
+
+const movePicture=(source,target)=>{
+ if(!unlocked){$('arrange-status').textContent='Unlock Parent Settings to arrange pictures.';return;}
+ if(source===target)return;
+ const before=model.exportVocabulary();
+ try{
+  model.moveWord(source,target);
+  if(!saveVocabulary()){model.importVocabulary(before);$('arrange-status').textContent='Could not save arrangement. Previous order restored.';renderVocabulary();return;}
+  $('arrange-status').textContent='Picture order saved on this device.';
+  renderVocabulary();
+ }catch(error){model.importVocabulary(before);$('arrange-status').textContent=error.message;renderVocabulary();}
+};
+const renderArrange=()=>{
+ const grid=$('arrange-grid');grid.replaceChildren();
+ if(!unlocked)return;
+ for(let i=0;i<model.words.length;i++){
+  const word=model.words[i],tile=document.createElement('div');
+  tile.className='arrange-tile symbol'+(['help','stop','break','hurt'].includes(word.id)?' urgent':'');
+  tile.dataset.wordId=word.id;tile.setAttribute('aria-label',word.label+', position '+(i+1));
+  const pic=document.createElement('div');pic.className='arrange-picture';pic.append(visualFor(word));
+  const label=document.createElement('span');label.textContent=word.label;
+  const grip=document.createElement('div');grip.className='arrange-grip';grip.textContent='⠿ Drag picture';grip.setAttribute('aria-hidden','true');
+  tile.append(pic,label,grip);
+  const controls=document.createElement('div');controls.className='arrange-controls';
+  for(const [text,other,after] of [['↑',model.words[i-1],false],['↓',model.words[i+1],true]]){
+   const btn=document.createElement('button');btn.type='button';btn.className='quiet';btn.textContent=text;
+   btn.setAttribute('aria-label',(after?'Move later: ':'Move earlier: ')+word.label);
+   btn.disabled=!other;
+   btn.onclick=()=>{if(other)movePicture(word.id,other.id,after);};
+   controls.append(btn);
+  }
+  tile.append(controls);
+  // Pointer capture prevents tablet scrolling from stealing the drag.
+  tile.addEventListener('pointerdown',e=>{
+   if(!unlocked||e.button!==0||e.target.closest('button'))return;
+   e.preventDefault();
+   const id=e.pointerId,originX=e.clientX,originY=e.clientY;
+   tile.setPointerCapture(id);
+   let hover=null;
+   const targetAt=(x,y)=>{
+    const el=document.elementFromPoint(x,y)?.closest('.arrange-tile');
+    return el&&el!==tile?el:null;
+   };
+   const cleanup=()=>{
+    hover?.classList.remove('arrange-drop');
+    tile.classList.remove('arrange-moving');
+    tile.removeEventListener('pointermove',moving);
+    tile.removeEventListener('pointerup',finish);
+    tile.removeEventListener('pointercancel',cancel);
+    tile.removeEventListener('lostpointercapture',cancel);
+    if(tile.hasPointerCapture(id))tile.releasePointerCapture(id);
+   };
+   const moving=ev=>{
+    if(Math.hypot(ev.clientX-originX,ev.clientY-originY)>8)tile.classList.add('arrange-moving');
+    const next=targetAt(ev.clientX,ev.clientY);
+    if(next!==hover){hover?.classList.remove('arrange-drop');hover=next;hover?.classList.add('arrange-drop');}
+   };
+   const finish=ev=>{
+    const target=targetAt(ev.clientX,ev.clientY),moved=Math.hypot(ev.clientX-originX,ev.clientY-originY)>12;
+    cleanup();
+    if(moved&&target)movePicture(word.id,target.dataset.wordId);
+   };
+   const cancel=()=>cleanup();
+   tile.addEventListener('pointermove',moving);
+   tile.addEventListener('pointerup',finish);
+   tile.addEventListener('pointercancel',cancel);
+   tile.addEventListener('lostpointercapture',cancel);
+  });
+  grid.append(tile);
+ }
+};
+$('finish-arranging').onclick=()=>selectParentTab('words');
+
 const renderVocabulary=()=>{
  $('vocab').replaceChildren();
  for(const word of model.words){const button=document.createElement('button');button.className='symbol'+(['help','stop','break','hurt'].includes(word.id)?' urgent':'');button.type='button';button.setAttribute('aria-label',word.label);const icon=visualFor(word);const label=document.createElement('span');label.textContent=word.label;button.append(icon,label);button.onclick=()=>{controller.selectAndSpeak(word.id).catch(e=>{$('speech-status').textContent=e.message;});render();};$('vocab').append(button);}
+ renderArrange();
  $('custom-list').replaceChildren();
  for(const w of model.words){
    const row=document.createElement('div');row.className='custom-row';
