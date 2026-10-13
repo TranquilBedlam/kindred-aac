@@ -111,7 +111,7 @@ const newChallenge=()=>{
  $('parent-answer').setAttribute('maxlength',hasPin?'8':'3');
  $('parent-unlock-hint').textContent=hasPin?'Enter your saved 4–8 digit PIN to unlock settings.':'Answer the adult question to unlock caregiver settings.';
 };
-const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;$('parent-lock-label').textContent=value?'🔓 Unlocked':'🔒 Locked';if(!value)newChallenge();};
+const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;$('parent-lock-label').textContent=value?'🔓 Unlocked':'🔒 Locked';if(!value){$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;newChallenge();}};
 newChallenge();
 const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.remove('parent-active');setUnlocked(false);$('open-parent-settings').focus();};
 $('exit-parent').onclick=closeParent;
@@ -125,7 +125,7 @@ $('unlock-parent').onsubmit=async e=>{
  let okay=false;
  if(record){okay=validPin(answer)&&await pinDigest(answer,record.salt)===record.digest;}
  else okay=verifyChallenge(challenge.a,challenge.b,answer);
- if(okay){$('parent-status').textContent='';setUnlocked(true);try{const code=sessionStorage.getItem('kindred-pending-recovery-code');if(code){sessionStorage.removeItem('kindred-pending-recovery-code');selectParentTab('security');showRecoveryCode(code);}}catch{}}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
+ if(okay){$('parent-status').textContent='';setUnlocked(true);}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
 };
 $('lock-parent').onclick=()=>setUnlocked(false);
 const showRecoveryCode=code=>{$('recovery-code-output').textContent=code;$('recovery-code-display').hidden=false;$('recovery-setup-status').textContent='Save this code in a safe place. Anyone with it and access to this browser can reset the PIN.';};
@@ -161,7 +161,7 @@ $('forgot-pin').onclick=()=>{
  $('recovery-status').textContent=storedPin()?.recoveryDigest?'Enter the recovery code saved when you set up your PIN.':'This PIN has no recovery code yet. A code must be created while Parent Settings is unlocked; this prototype cannot bypass an existing PIN.';
  $('recovery-code-input').focus();
 };
-$('cancel-recovery').onclick=()=>{$('unlock-parent').hidden=false;newChallenge();};
+$('cancel-recovery').onclick=()=>{$('recovery-result-code').textContent='';$('recovery-result').hidden=true;$('reset-with-recovery').disabled=false;$('unlock-parent').hidden=false;newChallenge();};
 $('reset-with-recovery').onclick=async()=>{
  const status=$('recovery-status'),code=$('recovery-code-input').value,pin=$('replacement-pin').value.trim();
  try{
@@ -169,11 +169,10 @@ $('reset-with-recovery').onclick=async()=>{
   localStorage.setItem(parentKey,JSON.stringify(result.record));
   if(storedPin()?.recoveryDigest!==result.record.recoveryDigest)throw Error('Unable to verify saved credentials.');
   $('recovery-code-input').value='';$('replacement-pin').value='';
-  $('unlock-parent').hidden=false;newChallenge();
-  $('parent-status').textContent='PIN reset successfully. Use your new PIN to unlock.';
-  status.textContent='';
-  // Recovery code was rotated: reveal it only after successful PIN unlock in Security.
-  sessionStorage.setItem('kindred-pending-recovery-code',result.code);
+  $('recovery-result').hidden=false;
+  $('recovery-result-code').textContent=result.code;
+  status.textContent='PIN reset! Save this NEW recovery code before returning to unlock. The old code no longer works.';
+  $('reset-with-recovery').disabled=true;
  }catch(e){status.textContent=(e.message==='Invalid recovery code.'?'Recovery code incorrect. Please try again.':e.message);}
 };
 $('remove-parent-pin').onclick=()=>{
