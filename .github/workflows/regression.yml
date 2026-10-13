@@ -1,0 +1,17 @@
+name: Kindred AAC regression tests
+on:
+  push:
+    branches: [chore/v014-reliability-audit]
+  pull_request:
+    branches: [gh-pages]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
