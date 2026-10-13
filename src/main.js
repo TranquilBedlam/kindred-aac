@@ -1,11 +1,13 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {TalkingPortrait} from './maya/talking-portrait.js';
+import {MiloStory,MILO_SCENES} from './milo-story.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
-const model=new CommunicationModel(),lesson=new LessonModel();
+const model=new CommunicationModel(),lesson=new LessonModel(),milo=new MiloStory();
+let miloActive=false;
 const storageKey='kindred-aac-vocabulary-v2';
 const legacyStorageKey='kindred-aac-custom-vocabulary-v1';
 try{const saved=localStorage.getItem(storageKey)||localStorage.getItem(legacyStorageKey);if(saved)model.importVocabulary(JSON.parse(saved));}catch(e){console.warn('Could not load custom vocabulary',e);}
@@ -147,7 +149,43 @@ const renderForest=()=>{
  $('forest-sky').textContent=lesson.completed?'🌈':step>1?'🌤️':'☀️';
  forest.setAttribute('aria-label',lesson.completed?'Pip is home with his blue scarf':step===2?'Pip finds the blue scarf':step===1?'Pip follows clues in the forest':'Pip searches for his lost scarf');
 };
+const renderMilo=()=>{
+ $('forest-scene').hidden=true;
+ $('forest-caption').textContent=milo.lastResponse;
+ $('story-choices').hidden=true;
+ $('learning-options').hidden=false;
+ $('learning-back').hidden=false;
+ $('learning-heading').textContent='Milo the Dragon and the Rainy-Day Surprise';
+ $('learning-progress').textContent=milo.finished?'The end!':`Scene ${milo.step+1} of ${MILO_SCENES.length}`;
+ const scene=milo.scene;
+ $('learning-narration').textContent=scene.line;
+ $('milo-visual').hidden=false;
+ $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='Flower'?'🌼':'🍁'):'');
+ $('milo-response').hidden=!milo.lastResponse;
+ $('milo-response').textContent=milo.lastResponse;
+ $('milo-prompt').hidden=milo.finished;
+ $('milo-prompt').textContent=scene.prompt+' These are optional story actions. Open Talk to communicate anything.';
+ $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear this scene';
+ const host=$('learning-options');host.replaceChildren();
+ if(milo.finished)return;
+ for(const [name,[emoji]] of Object.entries(scene.actions)){
+  const button=document.createElement('button');button.type='button';button.className='learning-option';
+  const pic=document.createElement('span');pic.textContent=emoji;pic.setAttribute('aria-hidden','true');
+  const word=document.createElement('strong');word.textContent=name;
+  button.append(pic,word);
+  button.onclick=()=>{if(lesson.paused)return;const reply=milo.choose(name);render();tellStory(reply);};
+  host.append(button);
+ }
+ const next=document.createElement('button');next.type='button';next.className='learning-option';
+ next.textContent=milo.step===MILO_SCENES.length-1?'Finish story':'Continue →';
+ next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line);};
+ host.append(next);
+};
 const renderLearning=()=>{
+ $('milo-visual').hidden=!miloActive;
+ $('milo-response').hidden=true;
+ $('milo-prompt').hidden=true;
+ if(miloActive){renderMilo();return;}
  renderForest();
  const scenes=lesson.choice?storyScenes[lesson.choice]:null;
  $('story-choices').hidden=!!lesson.choice;
@@ -182,10 +220,11 @@ const renderLearning=()=>{
 };
 $('learning-replay').onclick=()=>{
  if(lesson.paused)return;
+ if(miloActive){if(milo.finished){milo.reset();render();}tellStory($('learning-narration').textContent);return;}
  if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
  tellStory($('learning-narration').textContent);
 };
-$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
+$('learning-back').onclick=()=>{if(lesson.paused)return;miloActive=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -198,7 +237,7 @@ const render=()=>{
  $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
  $('close').hidden=controller.mode==='always';
  renderLearning();
- $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':miloActive?(milo.finished?'Milo story complete.':'Choose an optional story action or Continue. Talk is always available.'):lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
 };
 const perform=async fn=>{try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
 function buildIconPicker(host,input){
@@ -465,5 +504,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();

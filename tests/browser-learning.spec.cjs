@@ -121,3 +121,38 @@ test('Forest illustration updates and AAC remains independent',async({page})=>{
  await expect(page.locator('#forest-caption')).toContainText('cozy path');
  expect(errors).toEqual([]);
 });
+
+
+test('Milo story gives optional AAC participation and controllable boat',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('.story[data-choice="Milo"]').click();
+ await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await page.getByRole('button',{name:'Sad',exact:true}).click();
+ await expect(page.locator('#milo-response')).toContainText('looking forward');
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await expect(page.locator('#vocab button').first()).toHaveAttribute('aria-label','Help');
+ await page.locator('#close').click();
+ await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await page.getByRole('button',{name:'Continue'}).click();
+ await page.getByRole('button',{name:'Stay inside'}).click();
+ await page.getByRole('button',{name:'Continue'}).click();
+ await page.getByRole('button',{name:'Continue'}).click();
+ await page.getByRole('button',{name:'Flower'}).click();
+ await page.getByRole('button',{name:'Continue'}).click();
+ await expect(page.locator('#milo-visual')).toContainText('🌼');
+ await page.getByRole('button',{name:'Go',exact:true}).click();
+ await expect(page.locator('#milo-response')).toContainText('sails forward');
+ await page.getByRole('button',{name:'Stop',exact:true}).click();
+ await expect(page.locator('#milo-response')).toContainText('stops');
+ await page.getByRole('button',{name:'Again',exact:true}).click();
+ await expect(page.locator('#milo-response')).toContainText('stops');
+ await page.getByRole('button',{name:'Continue'}).click();
+ await page.getByRole('button',{name:'Continue'}).click();
+ await page.getByRole('button',{name:'Finish story'}).click();
+ await expect(page.locator('#learning-progress')).toHaveText('The end!');
+ await page.locator('#learning-replay').click();
+ await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ expect(errors).toEqual([]);
+});
