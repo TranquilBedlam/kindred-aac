@@ -1,5 +1,6 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {TalkingPortrait} from './maya/talking-portrait.js';
+import {PipNarrator,PIP_RECORDINGS} from './maya/pip-narrator.js';
 import {MiloStory,MILO_SCENES} from './milo-story.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
@@ -8,6 +9,9 @@ import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
 const model=new CommunicationModel(),lesson=new LessonModel(),milo=new MiloStory();
 let miloActive=false;
+const pipNarrator=new PipNarrator(url=>new Audio(url));
+const stopStoryAudio=()=>pipNarrator.stop();
+
 const storageKey='kindred-aac-vocabulary-v2';
 const legacyStorageKey='kindred-aac-custom-vocabulary-v1';
 try{const saved=localStorage.getItem(storageKey)||localStorage.getItem(legacyStorageKey);if(saved)model.importVocabulary(JSON.parse(saved));}catch(e){console.warn('Could not load custom vocabulary',e);}
@@ -112,7 +116,14 @@ $('maya-voice').onchange=()=>{
 $('maya-voice-preview').onclick=()=>tellStory(mayaWelcome);
 refreshMayaVoices();
 if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshMayaVoices);
-const tellStory=(words)=>{
+const tellStory=(words,recordingKey=null)=>{
+ stopStoryAudio();
+ if(recordingKey && PIP_RECORDINGS[recordingKey] && pipNarrator.play(recordingKey,{
+  onstart:()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is narrating with Pip voice.';},
+  onend:()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Narration finished.';},
+  onerror:()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Pip recording unavailable; using device narration.';tellStory(words);}
+ }))return;
+
  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
   $('learning-voice-status').textContent='Voice is unavailable here. Follow the written story or try a browser with speech.';
   return;
@@ -181,7 +192,7 @@ const renderMilo=()=>{
  next.textContent=milo.step===MILO_SCENES.length-1?'Finish story':'Continue story →';
  next.classList.add('milo-continue');
  next.setAttribute('aria-label',milo.step===MILO_SCENES.length-1?'Finish story':'Continue story without choosing');
- next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line+' '+milo.scene.prompt);};
+ next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line+' '+milo.scene.prompt,`scene${milo.step}`);};
  host.append(next);
 };
 const renderLearning=()=>{
@@ -224,11 +235,11 @@ const renderLearning=()=>{
 };
 $('learning-replay').onclick=()=>{
  if(lesson.paused)return;
- if(miloActive){if(milo.finished){milo.reset();render();}tellStory($('learning-narration').textContent);return;}
+ if(miloActive){if(milo.finished){milo.reset();render();}tellStory($('learning-narration').textContent,milo.finished?'scene0':`scene${milo.step}`);return;}
  if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
- tellStory($('learning-narration').textContent);
+ tellStory($('learning-narration').textContent,!lesson.choice?'welcome':null);
 };
-$('learning-back').onclick=()=>{if(lesson.paused)return;miloActive=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
+$('learning-back').onclick=()=>{if(lesson.paused)return;stopStoryAudio();miloActive=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -468,7 +479,7 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
 };
 renderVocabulary();
 $('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
-$('talk').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
+$('talk').onclick=()=>{mayaPortrait?.end();stopStoryAudio();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
 $('pin').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
 $('close').onclick=()=>{controller.close();render();};
 $('speak').onclick=()=>perform(()=>controller.speak());
@@ -508,5 +519,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line+' '+milo.scene.prompt);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line+' '+milo.scene.prompt,`scene${milo.step}`);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();

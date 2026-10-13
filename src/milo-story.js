@@ -12,7 +12,17 @@ export const MILO_SCENES=[
 export class MiloStory {
  constructor(){this.reset();}
  reset(){this.step=0;this.finished=false;this.history=[];this.lastResponse='';this.boatItem='';this.boatMotion='';this.boatPrevious='';this.location='';}
- get scene(){return MILO_SCENES[this.step];}
+ get scene(){
+  const base=MILO_SCENES[this.step];
+  // Return a derived scene, keeping the published story script immutable.
+  if(this.step===2 && this.location==='Stay inside')
+   return {...base,line:"From the cozy window, Milo and Pipkin spotted a shining puddle. Milo saw an upside-down dragon in the glass reflection! He stuck out his tongue. The reflection dragon did too. PLIP! A raindrop tapped the window, and Milo giggled."};
+  if(this.step===4 && this.boatItem==='Flower')
+   return {...base,line:"The fallen daisy, Captain Daisy, rode in Milo's paper boat. Milo lowered it into the puddle. It wobbled and tipped, then floated! 'All aboard the Puddle Express!' Pipkin cheered. The boat is ready for you to steer."};
+  if(this.step===4 && this.boatItem==='Leaf')
+   return {...base,line:"Milo's paper boat flew its red leaf flag. Milo lowered it into the puddle. It wobbled and tipped, then floated! 'All aboard the Puddle Express!' Pipkin cheered. The boat is ready for you to steer."};
+  return base;
+ }
  choose(action){
   if(this.finished||!(action in this.scene.actions))throw Error('Choose a story action');
   let response=this.scene.actions[action][1];
