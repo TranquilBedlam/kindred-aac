@@ -65,3 +65,10 @@
 
 /* Manage Words uses explicit buttons; visual drag handles are reserved for Arrange Pad. */
 #custom-list .custom-row{cursor:default;touch-action:pan-y}
+
+/* Optional discovery activity, communication remains independent. */
+.learning-step{margin:14px 0;padding:15px;border:1px solid #bdd2e7;border-radius:14px;background:#f5faff}
+.learning-step[hidden]{display:none!important}.learning-step h2{margin:0 0 6px}.learning-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.learning-option{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px;min-height:112px;font:inherit;border:2px solid #a8c7dd;border-radius:12px;background:white;color:#17354b}
+.learning-option span{font-size:42px}.learning-option[aria-pressed="true"]{border-color:#1762ad;background:#e6f4ff}
+@media(max-width:350px){.learning-options{grid-template-columns:1fr}}
