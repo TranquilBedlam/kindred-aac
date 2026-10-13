@@ -21,3 +21,17 @@ test('invalid actions cannot alter story and reset works',()=>{
 test('finished story has no active response actions',()=>{
  const m=new MiloStory();for(let i=0;i<7;i++)m.next();assert.throws(()=>m.choose('Oh no!'));
 });
+
+test('story narration follows the child's location and boat decoration choices',()=>{
+ const indoor=new MiloStory();
+ indoor.next();indoor.choose('Stay inside');indoor.next();
+ assert.match(indoor.scene.line,/window/i);
+ const outdoor=new MiloStory();
+ outdoor.next();outdoor.choose('Look outside');outdoor.next();
+ assert.match(outdoor.scene.line,/porch/i);
+ outdoor.next();outdoor.choose('Flower');outdoor.next();
+ assert.match(outdoor.scene.line,/daisy/i);
+ const leaf=new MiloStory();
+ leaf.next();leaf.next();leaf.next();leaf.choose('Leaf');leaf.next();
+ assert.match(leaf.scene.line,/red leaf flag/i);
+});
