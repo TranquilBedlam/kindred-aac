@@ -186,6 +186,7 @@ const renderMilo=()=>{
 };
 const renderLearning=()=>{
  $('milo-visual').hidden=!miloActive;
+ $('milo-help').hidden=!miloActive;
  $('milo-response').hidden=true;
  $('milo-prompt').hidden=true;
  if(miloActive){renderMilo();return;}
