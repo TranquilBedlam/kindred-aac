@@ -86,8 +86,9 @@ const tellStory=(words)=>{
  }
  try{
   const engine=window.speechSynthesis;
-  // Cancel only narration when choosing a new scene. AAC speech can interrupt narration.
-  engine.cancel();
+  // Avoid cancelling an idle speech engine before first narration: that
+  // can silence initial speech on some mobile browsers.
+  if(engine.speaking)engine.cancel();
   mayaPortrait?.end();
   const utterance=new SpeechSynthesisUtterance(words);
   utterance.lang='en-US';
