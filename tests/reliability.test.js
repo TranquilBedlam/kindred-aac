@@ -9,8 +9,8 @@ import {makeRecoveryRecord,verifyRecovery,resetPinWithRecovery,addRecoveryToExis
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/style.css',import.meta.url),'utf8');
-const ids=[...html.matchAll(/\\bid="([^"]+)"/g)].map(x=>x[1]);
-const referenced=[...js.matchAll(/\\$\\('([^']+)'\\)/g)].map(x=>x[1]);
+const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
+const referenced=[...js.matchAll(/\$\('([^']+)'\)/g)].map(x=>x[1]);
 test('all JavaScript element IDs exist in the page and are unique',()=>{
  assert.deepEqual([...new Set(referenced)].filter(x=>!ids.includes(x)),[]);
  assert.equal(new Set(ids).size,ids.length);
@@ -18,18 +18,18 @@ test('all JavaScript element IDs exist in the page and are unique',()=>{
 test('caregiver editor starts locked and cannot be made visible by CSS',()=>{
  assert.match(html,/id="caregiver-editor" hidden/);
  assert.match(js,/let unlocked=false/);
- assert.match(css,/\\[hidden\\]\\s*\\{display:none!important\\}/);
+ assert.match(css,/\[hidden\]\s*\{display:none!important\}/);
 });
 test('the PIN recovery reset does not clear vocabulary storage',()=>{
  const part=js.slice(js.indexOf("$('reset-with-recovery').onclick"),js.indexOf("$('remove-parent-pin').onclick"));
- assert.doesNotMatch(part,/localStorage\\.clear\\(/);
- assert.doesNotMatch(part,/removeItem\\(storageKey\\)/);
+ assert.doesNotMatch(part,/localStorage\.clear\(/);
+ assert.doesNotMatch(part,/removeItem\(storageKey\)/);
  assert.match(js,/kindred-aac-vocabulary-v2/);
 });
 test('AAC is directly accessible outside caregiver settings',()=>{
  assert.match(html,/id="talk"/);
  assert.match(html,/id="vocab"/);
- assert.match(js,/controller\\.selectAndSpeak/);
+ assert.match(js,/controller\.selectAndSpeak/);
 });
 test('essential communication words are retained after restoring defaults',()=>{
  const model=new CommunicationModel();
@@ -80,6 +80,6 @@ test('recovery reset leaves user vocabulary and photos untouched in storage',asy
 test('voice settings stay in caregiver view',()=>{
  assert.ok(html.indexOf('id="voice"')>html.indexOf('data-parent-pane="voice"'));
  assert.doesNotMatch(js,/go-voice/);
- assert.match(js,/msg\\.rate=Number\\(\\$\\('rate'\\)\\.value\\)/);
- assert.match(js,/msg\\.pitch=Number\\(\\$\\('pitch'\\)\\.value\\)/);
+ assert.match(js,/msg\.rate=Number\(\$\('rate'\)\.value\)/);
+ assert.match(js,/msg\.pitch=Number\(\$\('pitch'\)\.value\)/);
 });
