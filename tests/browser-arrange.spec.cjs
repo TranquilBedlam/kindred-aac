@@ -50,15 +50,34 @@ test('real touch events rearrange picture tiles on tablet emulation',async({brow
  const context=await browser.newContext({viewport:{width:820,height:1180},isMobile:true,hasTouch:true});
  const page=await context.newPage();
  await unlock(page);
- const from=page.locator('#arrange-grid .arrange-tile[data-word-id="water"]');
- const to=page.locator('#arrange-grid .arrange-tile[data-word-id="help"]');
+ const from=page.locator('#arrange-grid .arrange-tile[data-word-id="water"] .arrange-grip');
+ const to=page.locator('#arrange-grid .arrange-tile[data-word-id="help"] .arrange-grip');
  await from.scrollIntoViewIfNeeded();
  const a=await from.boundingBox(),b=await to.boundingBox();
- const x1=a.x+a.width/2,y1=a.y+30,x2=b.x+b.width/2,y2=b.y+30;
+ const x1=a.x+a.width/2,y1=a.y+a.height/2,x2=b.x+b.width/2,y2=b.y+b.height/2;
  const cdp=await context.newCDPSession(page);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x1,y:y1}]});
  for(let i=1;i<=12;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x1+(x2-x1)*i/12,y:y1+(y2-y1)*i/12}]});
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await expect(page.locator('#arrange-grid .arrange-tile').first()).toHaveAttribute('data-word-id','water');
+ await context.close();
+});
+
+test('phone touch gesture on drag handle moves picture without scrolling page',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+ const page=await context.newPage();
+ await unlock(page);
+ const from=page.locator('#arrange-grid .arrange-tile[data-word-id="stop"] .arrange-grip');
+ const to=page.locator('#arrange-grid .arrange-tile[data-word-id="help"] .arrange-grip');
+ await from.scrollIntoViewIfNeeded();
+ const a=await from.boundingBox(),b=await to.boundingBox();
+ const sx=a.x+a.width/2,sy=a.y+a.height/2,dx=b.x+b.width/2,dy=b.y+b.height/2;
+ const before=await page.evaluate(()=>window.scrollY);
+ const cdp=await context.newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy}]});
+ for(let k=1;k<=14;k++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx+(dx-sx)*k/14,y:sy+(dy-sy)*k/14}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect(page.locator('#arrange-grid .arrange-tile').first()).toHaveAttribute('data-word-id','stop');
+ expect(Math.abs((await page.evaluate(()=>window.scrollY))-before)).toBeLessThan(5);
  await context.close();
 });

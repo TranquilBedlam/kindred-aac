@@ -202,7 +202,7 @@ const renderArrange=()=>{
   tile.dataset.wordId=word.id;tile.setAttribute('aria-label',word.label+', position '+(i+1));
   const pic=document.createElement('div');pic.className='arrange-picture';pic.append(visualFor(word));
   const label=document.createElement('span');label.textContent=word.label;
-  const grip=document.createElement('div');grip.className='arrange-grip';grip.textContent='⠿ Drag picture';grip.setAttribute('aria-hidden','true');
+  const grip=document.createElement('div');grip.className='arrange-grip';grip.textContent='⠿ Hold here to drag';grip.setAttribute('aria-hidden','true');
   tile.append(pic,label,grip);
   const controls=document.createElement('div');controls.className='arrange-controls';
   for(const [text,other,after] of [['↑',model.words[i-1],false],['↓',model.words[i+1],true]]){
@@ -215,7 +215,7 @@ const renderArrange=()=>{
   tile.append(controls);
   // Pointer capture prevents tablet scrolling from stealing the drag.
   tile.addEventListener('pointerdown',e=>{
-   if(!unlocked||e.button!==0||e.target.closest('button'))return;
+   if(!unlocked||e.button!==0||e.pointerType==='touch'||e.target.closest('button'))return;
    e.preventDefault();
    const id=e.pointerId,originX=e.clientX,originY=e.clientY;
    tile.setPointerCapture(id);
@@ -249,6 +249,42 @@ const renderArrange=()=>{
    tile.addEventListener('pointercancel',cancel);
    tile.addEventListener('lostpointercapture',cancel);
   });
+  // Native touch events on a dedicated handle prevent vertical page scrolling
+  // during a drag. The rest of the page remains normally scrollable.
+  let touchStart=null,hoverTouch=null;
+  const touchTarget=(touch)=>{
+   const el=document.elementFromPoint(touch.clientX,touch.clientY)?.closest('.arrange-tile');
+   return el&&el!==tile?el:null;
+  };
+  const releaseTouch=()=>{
+   hoverTouch?.classList.remove('arrange-drop');hoverTouch=null;
+   tile.classList.remove('arrange-moving');touchStart=null;
+  };
+  grip.addEventListener('touchstart',e=>{
+   if(!unlocked||e.touches.length!==1)return;
+   e.preventDefault();
+   const finger=e.changedTouches[0];
+   touchStart={id:finger.identifier,x:finger.clientX,y:finger.clientY};
+  },{passive:false});
+  grip.addEventListener('touchmove',e=>{
+   if(!touchStart||!unlocked)return;
+   e.preventDefault();
+   const finger=[...e.changedTouches].find(f=>f.identifier===touchStart.id);
+   if(!finger)return;
+   if(Math.hypot(finger.clientX-touchStart.x,finger.clientY-touchStart.y)>8)tile.classList.add('arrange-moving');
+   const target=touchTarget(finger);
+   if(target!==hoverTouch){hoverTouch?.classList.remove('arrange-drop');hoverTouch=target;hoverTouch?.classList.add('arrange-drop');}
+  },{passive:false});
+  grip.addEventListener('touchend',e=>{
+   if(!touchStart)return;
+   e.preventDefault();
+   const finger=[...e.changedTouches].find(f=>f.identifier===touchStart.id);
+   const target=finger?touchTarget(finger):null;
+   const moved=finger&&Math.hypot(finger.clientX-touchStart.x,finger.clientY-touchStart.y)>12;
+   releaseTouch();
+   if(unlocked&&moved&&target)movePicture(word.id,target.dataset.wordId);
+  },{passive:false});
+  grip.addEventListener('touchcancel',releaseTouch);
   grid.append(tile);
  }
 };
