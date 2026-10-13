@@ -79,6 +79,35 @@ const storyScenes={
   {line:'Our space adventure is nearly over. Choose a picture to finish.',choices:[['Rocket','🚀'],['Moon','🌙']]}
  ]
 };
+const mayaVoiceKey='kindred-maya-voice-v1';
+const mayaVoices=()=>('speechSynthesis' in window?window.speechSynthesis.getVoices():[]).filter(v=>/^en-US$/i.test(v.lang));
+const rankMayaVoice=v=>{
+ const name=v.name.toLowerCase();
+ const girl=/\\b(samantha|ava|allison|jenny|aria|zira|susan|karen|victoria|serena|joanna|salli|kimberly|ivy|female)\\b/i.test(name);
+ const natural=/enhanced|premium|natural|neural|high quality/i.test(name);
+ return (girl?100:0)+(natural?35:0)+(v.localService?15:0);
+};
+const selectMayaVoice=()=>{
+ const voices=mayaVoices();
+ let stored='';try{stored=localStorage.getItem(mayaVoiceKey)||'';}catch{}
+ return voices.find(v=>v.voiceURI===stored)||[...voices].sort((a,b)=>rankMayaVoice(b)-rankMayaVoice(a))[0]||null;
+};
+const refreshMayaVoices=()=>{
+ const el=$('maya-voice');if(!el)return;
+ const voices=mayaVoices(),selected=selectMayaVoice();
+ el.replaceChildren(new Option('Automatic American English', ''));
+ for(const v of voices)el.add(new Option(v.name+(v.localService?' (on-device)':''),v.voiceURI));
+ let stored='';try{stored=localStorage.getItem(mayaVoiceKey)||'';}catch{}
+ el.value=voices.some(v=>v.voiceURI===stored)?stored:'';
+ $('maya-voice-note').textContent=selected?'Using: '+selected.name+'. Naturalness depends on your device.':'No American English voice detected yet. Voice options may load after you tap Preview.';
+};
+$('maya-voice').onchange=()=>{
+ try{localStorage.setItem(mayaVoiceKey,$('maya-voice').value);}catch{}
+ refreshMayaVoices();
+};
+$('maya-voice-preview').onclick=()=>tellStory('Hello! I am Maya. Would you like to explore the forest or travel into space?');
+refreshMayaVoices();
+if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshMayaVoices);
 const tellStory=(words)=>{
  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
   $('learning-voice-status').textContent='Voice is unavailable here. Follow the written story or try a browser with speech.';
@@ -93,10 +122,9 @@ const tellStory=(words)=>{
   const utterance=new SpeechSynthesisUtterance(words);
   utterance.lang='en-US';
   utterance.rate=.88;
-  const voices=engine.getVoices();
-  const preferred=voices.find(v=>v.voiceURI===$('voice').value)||
-   voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang?.startsWith('en'));
+  const preferred=selectMayaVoice();
   if(preferred)utterance.voice=preferred;
+  utterance.pitch=1.04;
   utterance.onstart=()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is telling the story.';};
   utterance.onend=()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Story narration finished.';};
   utterance.onerror=e=>{mayaPortrait?.end();$('learning-voice-status').textContent='Audio unavailable ('+(e.error||'unknown')+'). The story remains readable.';};
