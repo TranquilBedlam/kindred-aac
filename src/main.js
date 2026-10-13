@@ -83,7 +83,7 @@ const mayaVoiceKey='kindred-maya-voice-v1';
 const mayaVoices=()=>('speechSynthesis' in window?window.speechSynthesis.getVoices():[]).filter(v=>/^en-US$/i.test(v.lang));
 const rankMayaVoice=v=>{
  const name=v.name.toLowerCase();
- const girl=/\\b(samantha|ava|allison|jenny|aria|zira|susan|karen|victoria|serena|joanna|salli|kimberly|ivy|female)\\b/i.test(name);
+ const girl=/\b(samantha|ava|allison|jenny|aria|zira|susan|karen|victoria|serena|joanna|salli|kimberly|ivy|female)\b/i.test(name);
  const natural=/enhanced|premium|natural|neural|high quality/i.test(name);
  return (girl?100:0)+(natural?35:0)+(v.localService?15:0);
 };
