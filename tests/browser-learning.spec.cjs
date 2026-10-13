@@ -21,6 +21,7 @@ test('narrated story advances through scenes and can replay',async({page})=>{
 test('AAC is available during story, Maya can be hidden',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
  await page.locator('.story[data-choice="Space"]').click();
+ await page.locator('.maya-preferences summary').click();
  await page.locator('#maya-toggle').click();
  await expect(page.locator('#maya-portrait')).toBeHidden();
  await page.locator('#talk').click();
@@ -50,6 +51,7 @@ test('Maya American voice selection and preview never change AAC voice',async({p
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
  await page.locator('.story[data-choice="Bears"]').click();
+ await page.locator('.maya-preferences summary').click();
  await expect(page.locator('#maya-voice')).toBeVisible();
  await expect(page.locator('#maya-voice-preview')).toBeVisible();
  await page.locator('#maya-voice-preview').click();
