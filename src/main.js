@@ -1,5 +1,6 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {TalkingPortrait} from './maya/talking-portrait.js';
+import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
@@ -19,8 +20,8 @@ const speaker=text=>{
   const msg=new SpeechSynthesisUtterance(text);
   msg.lang='en-US'; msg.rate=Number($('rate').value)||1; msg.pitch=Number($('pitch').value)||1;
   const voices=engine.getVoices();
-  const chosen=voices.find(v=>v.voiceURI===$('voice').value);
-  if(chosen)msg.voice=chosen;else{const english=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang?.startsWith('en'));if(english)msg.voice=english;}
+  const chosen=chooseVoice(voices,$('voice').value);
+  if(chosen)msg.voice=chosen;
   engine.speak(msg);
   if(engine.paused)engine.resume();
   $('speech-status').textContent='Speaking: '+text;
@@ -443,15 +444,12 @@ const refreshVoices=()=>{
  let stored='';
  try{stored=localStorage.getItem(voiceStorageKey)||'';}catch{}
  selection.replaceChildren(new Option('Device default',''));
- const voices=window.speechSynthesis.getVoices().filter(v=>v.lang?.toLowerCase().startsWith('en'));
- for(const v of voices){
-  const google=/google us english/i.test(v.name)&&v.lang?.toLowerCase().startsWith('en-us');
-  selection.add(new Option((google?'★ ':'')+v.name+(v.localService?' (on-device)':' (may need internet)'),v.voiceURI));
- }
+ const voices=englishVoices(window.speechSynthesis.getVoices());
+ for(const v of voices)selection.add(new Option(voiceLabel(v),v.voiceURI));
  const preferred=[previous,stored].find(value=>value&&voices.some(v=>v.voiceURI===value));
- const google=voices.find(v=>/google us english/i.test(v.name)&&v.lang?.toLowerCase().startsWith('en-us'));
- selection.value=preferred||(google?.voiceURI||'');
- $('voice-hint').textContent=google?'Google US English is available. Preview it to hear whether it suits your child. This is not a verified boy voice.':'Google US English is not offered by this browser. Choose another voice and use Hear voice to preview it.';
+ const chosen=chooseVoice(voices,preferred);
+ selection.value=preferred||chosen?.voiceURI||'';
+ $('voice-hint').textContent=chosen?(chosen.localService?'Preferred on-device voice: ':'Voice may require internet: ')+chosen.name+'. Preview to confirm speech quality and availability.':'No English voice detected. Install an English device voice in system settings; AAC text remains visible.';
 };
 $('voice').addEventListener('change',()=>{
  try{localStorage.setItem(voiceStorageKey,$('voice').value);$('voice-settings-status').textContent='Voice preference saved on this device.';}catch{$('voice-settings-status').textContent='Could not save voice selection.';}
