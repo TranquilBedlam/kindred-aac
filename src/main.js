@@ -221,13 +221,14 @@ const renderVocabulary=()=>{
    up.onclick=()=>{if(previous)move(w.id,previous.id);};
    const down=document.createElement('button');down.type='button';down.className='quiet move-word';down.textContent='↓';down.title='Move '+w.label+' down';down.setAttribute('aria-label',down.title);down.disabled=!next;
    down.onclick=()=>{if(next)move(w.id,next.id,true);};
-   row.draggable=unlocked;row.dataset.wordId=w.id;row.setAttribute('aria-label',w.label+', position '+(index+1)+' of '+model.words.length);
-   row.addEventListener('dragstart',e=>{if(!unlocked){e.preventDefault();return;}e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',w.id);});
+   row.dataset.wordId=w.id;row.setAttribute('aria-label',w.label+', position '+(index+1)+' of '+model.words.length);
+   const grip=document.createElement('span');grip.className='drag-handle';grip.textContent='⠿';grip.title='Drag to move '+w.label;grip.setAttribute('aria-hidden','true');grip.draggable=unlocked;
+   grip.addEventListener('dragstart',e=>{if(!unlocked){e.preventDefault();return;}e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',w.id);});
    row.addEventListener('dragover',e=>{if(!unlocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('drop-target');});
    row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));
    row.addEventListener('dragend',()=>document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target')));
    row.addEventListener('drop',e=>{e.preventDefault();row.classList.remove('drop-target');if(!unlocked)return;const dragged=e.dataTransfer.getData('text/plain');if(!model.ids.has(dragged))return;move(dragged,w.id);});
-   row.append(label,up,down,edit,del);$('custom-list').append(row,editor);
+   row.append(grip,label,up,down,edit,del);$('custom-list').append(row,editor);
  }
 };
 $('add-word').onsubmit=async e=>{e.preventDefault();if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}try{const photo=await compressPhoto($('new-photo').files?.[0]);const w=model.addCustom($('new-word').value,$('new-symbol').value,photo);saveVocabulary();$('new-word').value='';$('new-symbol').value='💬';$('new-photo').value='';$('add-icon-picker').resetSelection();$('edit-status').textContent='Added '+w.label;renderVocabulary();render();}catch(err){$('edit-status').textContent=err.message;}};
