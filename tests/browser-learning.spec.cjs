@@ -38,8 +38,7 @@ test('Maya original image layers load, can be hidden and do not block AAC',async
  const stage=page.locator('#maya-portrait .tp-stage');
  await expect(stage).toBeVisible();
  await expect(stage.locator('img')).toHaveCount(5);
- const valid=await stage.locator('img').evaluateAll(images=>images.every(im=>im.complete&&im.naturalWidth>0));
- expect(valid).toBe(true);
+ await expect.poll(()=>stage.locator('img').evaluateAll(images=>images.every(im=>im.complete&&im.naturalWidth>0))).toBe(true);
  await page.locator('.maya-preferences summary').click();
  await page.locator('#maya-toggle').click();
  await expect(page.locator('#maya-portrait')).toBeHidden();
