@@ -55,3 +55,5 @@
 /* Explicit drag handle avoids starting HTML drag from nested editor buttons. */
 .drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:48px;font-size:26px;cursor:grab;user-select:none;touch-action:pan-y}
 .drag-handle[draggable="true"]:active{cursor:grabbing}
+
+.drag-handle[draggable="true"]{touch-action:none}
