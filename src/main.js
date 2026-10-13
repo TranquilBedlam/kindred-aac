@@ -133,15 +133,17 @@ const tellStory=(words)=>{
   $('learning-voice-status').textContent='Starting narration…';
  }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
+const mayaWelcome="Hi! I'm Maya. Would you like to explore the forest or go into space?";
 const renderLearning=()=>{
- const area=$('learning-step');area.hidden=!lesson.choice;
- if(!lesson.choice)return;
- const scenes=storyScenes[lesson.choice];
- $('learning-heading').textContent=lesson.choice==='Bears'?'The Little Forest Bear':'A Rocket Adventure';
- $('learning-progress').textContent=lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
- const scene=lesson.completed?null:scenes[lesson.step];
- $('learning-narration').textContent=scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
- $('learning-replay').textContent=lesson.completed?'Play story again':'🔊 Hear story again';
+ const scenes=lesson.choice?storyScenes[lesson.choice]:null;
+ $('story-choices').hidden=!!lesson.choice;
+ $('learning-options').hidden=!lesson.choice||lesson.completed;
+ $('learning-back').hidden=!lesson.choice;
+ $('learning-heading').textContent=!lesson.choice?'What adventure would you like?':lesson.choice==='Bears'?'The Little Forest Bear':'A Rocket Adventure';
+ $('learning-progress').textContent=!lesson.choice?'Choose an adventure':lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
+ const scene=lesson.choice&&!lesson.completed?scenes[lesson.step]:null;
+ $('learning-narration').textContent=!lesson.choice?mayaWelcome:scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('learning-replay').textContent=!lesson.choice?'🔊 Hear Maya':lesson.completed?'Play story again':'🔊 Hear story again';
  const options=$('learning-options');options.replaceChildren();
  if(!scene)return;
  for(const [name,emoji] of scene.choices){
