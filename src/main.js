@@ -67,16 +67,17 @@ $('maya-toggle').onclick=()=>{
  $('maya-portrait').hidden=!mayaEnabled;
  if(!mayaEnabled)mayaPortrait?.end();
 };
+// Story grammar: character, small problem, meaningful choices, resolution.
 const storyScenes={
  Bears:[
-  {line:'A little bear wakes up in the forest. What should the bear explore?',choices:[['Bear','🐻'],['Trees','🌲']]},
-  {line:'The bear goes for a walk. Look around! What can we see?',choices:[['Trees','🌲'],['Bear','🐻']]},
-  {line:'The bear is ready to rest. Choose a picture to finish the story.',choices:[['Bear','🐻'],['Trees','🌲']]}
+  {line:'Pip the little bear has lost his favorite blue scarf. It is getting chilly. Where should Pip look first?',choices:[['Bear','🐻'],['Trees','🌲']],responses:{Bear:'Pip checks his paws and pockets. No scarf! A little breeze rustles the trees.',Trees:'Pip peeks behind a tall tree. There are tiny footprints in the leaves!'}},
+  {line:'A little bird chirps nearby. Pip hears something fluttering above him. What should Pip look at?',choices:[['Trees','🌲'],['Bear','🐻']],responses:{Trees:'There it is! The blue scarf is caught on a low branch.',Bear:'Pip stretches up on tiptoes. He spots something blue in the branches!'}},
+  {line:'Pip has found his scarf! He wraps up warm. What should he do before going home?',choices:[['Bear','🐻'],['Trees','🌲']],responses:{Bear:'Pip gives a happy wiggle. What a cozy ending!',Trees:'Pip waves goodbye to the forest. What a cozy ending!'}}
  ],
  Space:[
-  {line:'A rocket is getting ready for space. Where shall we look?',choices:[['Rocket','🚀'],['Moon','🌙']]},
-  {line:'Whoosh! We are flying in space. What do we see?',choices:[['Moon','🌙'],['Rocket','🚀']]},
-  {line:'Our space adventure is nearly over. Choose a picture to finish.',choices:[['Rocket','🚀'],['Moon','🌙']]}
+  {line:'Nova the little astronaut is ready to visit the moon, but her rocket needs a destination. Where shall she go?',choices:[['Rocket','🚀'],['Moon','🌙']],responses:{Rocket:'Nova checks every button. The engines begin to hum!',Moon:'Nova points to the bright moon. That is the perfect place to explore!'}},
+  {line:'Whoosh! Nova flies among the stars. A sparkling trail leads ahead. What should she explore?',choices:[['Moon','🌙'],['Rocket','🚀']],responses:{Moon:'The moon shines brighter and brighter as Nova gets closer.',Rocket:'Nova watches the rocket windows glow with tiny stars.'}},
+  {line:'Nova lands safely and sees Earth shining far away. What should she visit before heading home?',choices:[['Rocket','🚀'],['Moon','🌙']],responses:{Rocket:'Nova climbs aboard for a gentle trip home. What an adventure!',Moon:'Nova makes one little moon-hop before heading home. What an adventure!'}}
  ]
 };
 const mayaVoiceKey='kindred-maya-voice-v1';
@@ -126,6 +127,7 @@ const tellStory=(words)=>{
   if(preferred)utterance.voice=preferred;
   utterance.pitch=1.04;
   utterance.onstart=()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is telling the story.';};
+  utterance.onboundary=event=>{if(mayaEnabled&&event.name==='word')mayaPortrait?.word(words.slice(event.charIndex,event.charIndex+(event.charLength||12)));};
   utterance.onend=()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Story narration finished.';};
   utterance.onerror=e=>{mayaPortrait?.end();$('learning-voice-status').textContent='Audio unavailable ('+(e.error||'unknown')+'). The story remains readable.';};
   engine.speak(utterance);
@@ -154,9 +156,10 @@ const renderLearning=()=>{
   button.append(picture,word);
   button.onclick=()=>{
    if(lesson.paused)return;
+   const response=scene.responses[name];
    lesson.explore(name);
    render();
-   tellStory(lesson.completed?'The end! Great exploring!':`You picked ${name}. ${scenes[lesson.step].line}`);
+   tellStory(lesson.completed?response+' The end.':response+' '+scenes[lesson.step].line);
   };
   options.append(button);
  }
