@@ -224,6 +224,20 @@ const renderVocabulary=()=>{
    row.dataset.wordId=w.id;row.setAttribute('aria-label',w.label+', position '+(index+1)+' of '+model.words.length);
    const grip=document.createElement('span');grip.className='drag-handle';grip.textContent='⠿';grip.title='Drag to move '+w.label;grip.setAttribute('aria-hidden','true');grip.draggable=unlocked;
    grip.addEventListener('dragstart',e=>{if(!unlocked){e.preventDefault();return;}e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',w.id);});
+   // Pointer-based fallback supports touch and mouse where HTML drag events do not fire.
+   grip.addEventListener('pointerdown',start=>{
+     if(!unlocked||start.button!==0)return;
+     const origin={x:start.clientX,y:start.clientY};
+     const finish=end=>{
+       document.removeEventListener('pointercancel',cancel);
+       if(!unlocked||Math.hypot(end.clientX-origin.x,end.clientY-origin.y)<18)return;
+       const target=document.elementFromPoint(end.clientX,end.clientY)?.closest('.custom-row');
+       if(target?.dataset.wordId&&target.dataset.wordId!==w.id)move(w.id,target.dataset.wordId);
+     };
+     const cancel=()=>document.removeEventListener('pointerup',finish);
+     document.addEventListener('pointerup',finish,{once:true});
+     document.addEventListener('pointercancel',cancel,{once:true});
+   });
    row.addEventListener('dragover',e=>{if(!unlocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('drop-target');});
    row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));
    row.addEventListener('dragend',()=>document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target')));
