@@ -82,3 +82,18 @@
 .tp-stage img{position:absolute;max-width:none;height:auto;pointer-events:none;user-select:none}
 #maya-toggle{min-height:44px;margin-right:8px}
 @media(max-width:480px){.story-scene{grid-template-columns:1fr}.maya-portrait{max-width:155px;margin:auto}.learning-options{width:100%}}
+
+/* Maya-led layout: stable companion on the left, changing choices on the right. */
+.lesson .learning-step{display:block;margin-top:12px}
+.lesson .story-scene{display:grid;grid-template-columns:minmax(235px,38%) minmax(0,1fr);align-items:start;gap:24px}
+.lesson .maya-portrait{max-width:none;width:100%;position:sticky;top:16px;aspect-ratio:1;min-height:260px}
+.lesson .story-content{min-width:0}
+.lesson .story-content h2{margin:0 0 8px}
+.lesson .story-content .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lesson .story-content .cards[hidden],.lesson .learning-options[hidden],#learning-back[hidden]{display:none!important}
+.lesson .story-content .learning-options{margin:12px 0}
+.lesson .story-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.lesson .maya-preferences{margin-top:14px;font-size:.95rem}
+.lesson .maya-preferences summary{cursor:pointer;font-weight:600}
+.lesson .maya-voice-controls{margin:10px 0}
+@media(max-width:640px){.lesson .story-scene{grid-template-columns:minmax(115px,38%) minmax(0,1fr);gap:12px}.lesson .maya-portrait{min-height:0;max-width:none;margin:0}.lesson .story-content .cards,.lesson .story-content .learning-options{grid-template-columns:1fr}.lesson .story-content .story{min-height:85px;padding:9px}.lesson .story-content .learning-option{min-height:94px}.lesson .learning-narration{font-size:1rem}}
