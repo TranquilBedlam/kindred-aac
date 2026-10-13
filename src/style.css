@@ -74,3 +74,11 @@
 @media(max-width:350px){.learning-options{grid-template-columns:1fr}}
 
 .learning-narration{font-size:1.2rem;font-weight:650;line-height:1.5;max-width:44rem}.learning-progress{font-weight:700;color:#305d83}.learning-option:active{transform:scale(.97)}#learning-replay{margin-right:12px;margin-bottom:10px}
+
+/* Maya's layered portrait: optional decoration, independent of communication */
+.story-scene{display:grid;grid-template-columns:minmax(110px,210px) 1fr;gap:18px;align-items:center}
+.maya-portrait{width:100%;max-width:210px;aspect-ratio:1;border-radius:16px;background:#f7edf9;overflow:hidden;display:grid;place-items:center}
+.maya-portrait[hidden]{display:none!important}#maya-placeholder{font-size:70px}.tp-stage{position:relative;width:100%;aspect-ratio:1;overflow:hidden}
+.tp-stage img{position:absolute;max-width:none;height:auto;pointer-events:none;user-select:none}
+#maya-toggle{min-height:44px;margin-right:8px}
+@media(max-width:480px){.story-scene{grid-template-columns:1fr}.maya-portrait{max-width:155px;margin:auto}.learning-options{width:100%}}
