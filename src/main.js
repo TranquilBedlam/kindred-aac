@@ -109,7 +109,7 @@ $('maya-voice').onchange=()=>{
  try{localStorage.setItem(mayaVoiceKey,$('maya-voice').value);}catch{}
  refreshMayaVoices();
 };
-$('maya-voice-preview').onclick=()=>tellStory('Hello! I am Maya. Would you like to explore the forest or travel into space?');
+$('maya-voice-preview').onclick=()=>tellStory(mayaWelcome);
 refreshMayaVoices();
 if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshMayaVoices);
 const tellStory=(words)=>{
@@ -138,7 +138,7 @@ const tellStory=(words)=>{
   $('learning-voice-status').textContent='Starting narration…';
  }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
-const mayaWelcome="Hi! I'm Maya. Would you like to explore the forest or go into space?";
+const mayaWelcome="Hi! I'm Maya. Would you like to help Milo the dragon on a rainy-day adventure, explore the forest, or travel into space? Tap a story picture to begin.";
 const renderForest=()=>{
  const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
  const step=lesson.step;

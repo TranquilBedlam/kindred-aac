@@ -15,7 +15,7 @@ test('narrated story advances through scenes and can replay',async({page})=>{
  await page.locator('#learning-back').click();
  await expect(page.locator('#learning-step')).toBeVisible();
  await expect(page.locator('#maya-portrait')).toBeVisible();
- await expect(page.locator('#learning-narration')).toContainText('Would you like to explore');
+ await expect(page.locator('#learning-narration')).toContainText('Milo the dragon');
  expect(errors).toEqual([]);
 });
 test('AAC is available during story, Maya can be hidden',async({page})=>{
@@ -172,4 +172,17 @@ test('Milo opening clearly explains interaction and allows no-response continuat
  await expect(page.locator('#pad')).toBeVisible();
  await page.locator('#close').click();
  await expect(page.locator('#learning-progress')).toHaveText('Scene 2 of 7');
+});
+
+
+test('welcome and Maya preview name all three available stories',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/');
+ await expect(page.locator('#learning-narration')).toContainText('Milo the dragon');
+ await expect(page.locator('.story[data-choice="Milo"]')).toBeVisible();
+ await expect(page.locator('.story[data-choice="Bears"]')).toBeVisible();
+ await expect(page.locator('.story[data-choice="Space"]')).toBeVisible();
+ await page.locator('.story[data-choice="Milo"]').click();
+ await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await page.locator('#learning-back').click();
+ await expect(page.locator('#learning-narration')).toContainText('Milo the dragon');
 });
