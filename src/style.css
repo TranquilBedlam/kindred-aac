@@ -51,3 +51,7 @@
 
 /* Parent-only vocabulary ordering */
 .custom-row[draggable="true"]{cursor:grab;display:flex;align-items:center;gap:8px;flex-wrap:wrap;touch-action:pan-y}.custom-row[draggable="true"]:active{cursor:grabbing}.custom-row.drop-target{outline:3px dashed #2461ae;background:#eaf5ff}.custom-row>span{flex:1;min-width:155px}.move-word{min-width:48px;min-height:48px;font-size:1.3rem;font-weight:800}.move-word:disabled{opacity:.35}
+
+/* Explicit drag handle avoids starting HTML drag from nested editor buttons. */
+.drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:48px;font-size:26px;cursor:grab;user-select:none;touch-action:pan-y}
+.drag-handle[draggable="true"]:active{cursor:grabbing}
