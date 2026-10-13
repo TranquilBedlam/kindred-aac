@@ -1,4 +1,5 @@
 name: Publish Kindred AAC Website
+# Deployment must originate on gh-pages, permitted by environment protection.
 on:
   push:
     branches: [gh-pages]
