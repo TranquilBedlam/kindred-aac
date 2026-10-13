@@ -156,6 +156,7 @@ const renderLearning=()=>{
  $('learning-progress').textContent=!lesson.choice?'Choose an adventure':lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
  const scene=lesson.choice&&!lesson.completed?scenes[lesson.step]:null;
  $('learning-narration').textContent=!lesson.choice?mayaWelcome:scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('forest-caption').textContent=lesson.choice==='Bears'?lesson.lastEvent:'';
  $('learning-replay').textContent=!lesson.choice?'🔊 Hear Maya':lesson.completed?'Play story again':'🔊 Hear story again';
  const options=$('learning-options');options.replaceChildren();
  if(!scene)return;
@@ -169,6 +170,7 @@ const renderLearning=()=>{
    if(lesson.paused)return;
    const response=scene.responses[name];
    lesson.explore(name);
+   lesson.lastEvent=response;
    render();
    const next=lesson.completed?' The end.':(' '+scenes[lesson.step].line);
    const branch=lesson.choice==='Bears'&&lesson.step===2?(lesson.path[0]==='Trees'?' The little bird leads Pip toward a low branch.':' Pip follows the rustling leaves toward a low branch.') : '';
