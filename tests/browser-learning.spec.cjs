@@ -98,3 +98,26 @@ test('narration follows story events without repetitive picked confirmation',asy
  await page.getByRole('button',{name:'Bear',exact:true}).click();
  await expect(page.locator('#learning-progress')).toHaveText('The end!');
 });
+
+test('Forest scenery, consequences and AAC work without requiring narration',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await expect(page.locator('#forest-scene')).toBeHidden();
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.locator('#forest-scene')).toBeVisible();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','0');
+ await page.getByRole('button',{name:'Trees',exact:true}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','1');
+ await expect(page.locator('#forest-caption')).toContainText('footprints');
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await page.locator('#vocab button').first().click();
+ await expect(page.locator('#phrase')).not.toBeEmpty();
+ await page.locator('#close').click();
+ await page.getByRole('button',{name:'Trees',exact:true}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','2');
+ await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','home');
+ await expect(page.locator('#forest-caption')).toContainText('cozy ending');
+ expect(errors).toEqual([]);
+});
