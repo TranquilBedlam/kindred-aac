@@ -1,4 +1,5 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
+import {TalkingPortrait} from './maya/talking-portrait.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
@@ -51,33 +52,91 @@ function visualFor(word){
 }
 const controller=new PadController(model,lesson,speaker);
 
-const learningScenes={
- Bears:[{name:'Bear',emoji:'🐻',feedback:'You found a bear!'},{name:'Trees',emoji:'🌲',feedback:'You found trees!'}],
- Space:[{name:'Rocket',emoji:'🚀',feedback:'You found a rocket!'},{name:'Moon',emoji:'🌙',feedback:'You found the moon!'}]
+let mayaPortrait=null;
+let mayaEnabled=true;
+TalkingPortrait.create($('maya-portrait'),'src/maya/characters/maya').then(p=>{
+ mayaPortrait=p;
+ if(!mayaEnabled)p.host.hidden=true;
+}).catch(()=>{
+ $('maya-portrait').setAttribute('aria-label','Maya artwork is not installed; story choices remain available.');
+});
+$('maya-toggle').onclick=()=>{
+ mayaEnabled=!mayaEnabled;
+ $('maya-toggle').setAttribute('aria-pressed',String(mayaEnabled));
+ $('maya-toggle').textContent=mayaEnabled?'Maya on':'Maya off';
+ $('maya-portrait').hidden=!mayaEnabled;
+ if(!mayaEnabled)mayaPortrait?.end();
+};
+const storyScenes={
+ Bears:[
+  {line:'A little bear wakes up in the forest. What should the bear explore?',choices:[['Bear','🐻'],['Trees','🌲']]},
+  {line:'The bear goes for a walk. Look around! What can we see?',choices:[['Trees','🌲'],['Bear','🐻']]},
+  {line:'The bear is ready to rest. Choose a picture to finish the story.',choices:[['Bear','🐻'],['Trees','🌲']]}
+ ],
+ Space:[
+  {line:'A rocket is getting ready for space. Where shall we look?',choices:[['Rocket','🚀'],['Moon','🌙']]},
+  {line:'Whoosh! We are flying in space. What do we see?',choices:[['Moon','🌙'],['Rocket','🚀']]},
+  {line:'Our space adventure is nearly over. Choose a picture to finish.',choices:[['Rocket','🚀'],['Moon','🌙']]}
+ ]
+};
+const tellStory=(words)=>{
+ if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
+  $('learning-voice-status').textContent='Voice is unavailable here. Follow the written story or try a browser with speech.';
+  return;
+ }
+ try{
+  const engine=window.speechSynthesis;
+  // Avoid cancelling an idle speech engine before first narration: that
+  // can silence initial speech on some mobile browsers.
+  if(engine.speaking)engine.cancel();
+  mayaPortrait?.end();
+  const utterance=new SpeechSynthesisUtterance(words);
+  utterance.lang='en-US';
+  utterance.rate=.88;
+  const voices=engine.getVoices();
+  const preferred=voices.find(v=>v.voiceURI===$('voice').value)||
+   voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang?.startsWith('en'));
+  if(preferred)utterance.voice=preferred;
+  utterance.onstart=()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is telling the story.';};
+  utterance.onend=()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Story narration finished.';};
+  utterance.onerror=e=>{mayaPortrait?.end();$('learning-voice-status').textContent='Audio unavailable ('+(e.error||'unknown')+'). The story remains readable.';};
+  engine.speak(utterance);
+  if(engine.paused)engine.resume();
+  $('learning-voice-status').textContent='Starting narration…';
+ }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
 const renderLearning=()=>{
  const area=$('learning-step');area.hidden=!lesson.choice;
  if(!lesson.choice)return;
- $('learning-heading').textContent=lesson.choice==='Bears'?'Explore the forest':'Explore space';
+ const scenes=storyScenes[lesson.choice];
+ $('learning-heading').textContent=lesson.choice==='Bears'?'The Little Forest Bear':'A Rocket Adventure';
+ $('learning-progress').textContent=lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
+ const scene=lesson.completed?null:scenes[lesson.step];
+ $('learning-narration').textContent=scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('learning-replay').textContent=lesson.completed?'Play story again':'🔊 Hear story again';
  const options=$('learning-options');options.replaceChildren();
- for(const option of learningScenes[lesson.choice]){
+ if(!scene)return;
+ for(const [name,emoji] of scene.choices){
   const button=document.createElement('button');button.type='button';button.className='learning-option';
-  button.setAttribute('aria-pressed',String(lesson.discovery===option.name));
-  const picture=document.createElement('span');picture.textContent=option.emoji;picture.setAttribute('aria-hidden','true');
-  const name=document.createElement('strong');name.textContent=option.name;
-  button.append(picture,name);
+  button.setAttribute('aria-label',name);
+  const picture=document.createElement('span');picture.textContent=emoji;picture.setAttribute('aria-hidden','true');
+  const word=document.createElement('strong');word.textContent=name;
+  button.append(picture,word);
   button.onclick=()=>{
    if(lesson.paused)return;
-   lesson.explore(option.name);
-   // Informational narration is optional; visual feedback works with sound off.
-   try{speaker(option.name);}catch(error){$('lesson-status').textContent=error.message;}
+   lesson.explore(name);
    render();
+   tellStory(lesson.completed?'The end! Great exploring!':`You picked ${name}. ${scenes[lesson.step].line}`);
   };
   options.append(button);
  }
 };
-$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));render();};
-
+$('learning-replay').onclick=()=>{
+ if(lesson.paused)return;
+ if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
+ tellStory($('learning-narration').textContent);
+};
+$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -90,7 +149,7 @@ const render=()=>{
  $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
  $('close').hidden=controller.mode==='always';
  renderLearning();
- $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.discovery?`You chose ${lesson.discovery}. Explore more or open Talk anytime.`:lesson.choice?`Explore ${lesson.choice}, or open Talk anytime.`:'You can choose a story, or open Talk anytime.';
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
 };
 const perform=async fn=>{try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
 function buildIconPicker(host,input){
@@ -317,8 +376,8 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
 };
 renderVocabulary();
 $('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
-$('talk').onclick=()=>{if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
-$('pin').onclick=()=>{if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
+$('talk').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
+$('pin').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
 $('close').onclick=()=>{controller.close();render();};
 $('speak').onclick=()=>perform(()=>controller.speak());
 $('quick-mode').onclick=()=>{controller.setCommunicationMode('quick');render();};
@@ -360,5 +419,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();
