@@ -57,3 +57,8 @@
 .drag-handle[draggable="true"]:active{cursor:grabbing}
 
 .drag-handle[draggable="true"]{touch-action:none}
+
+/* Caregiver's tile-level arrangement, visually matching child pad */
+.parent-pane[data-parent-pane="arrange"] .arrange-grid{margin:18px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;max-width:950px}
+.arrange-tile{position:relative;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:none;user-select:none;cursor:grab;padding:12px!important;text-align:center}
+.arrange-tile:active{cursor:grabbing}.arrange-picture{pointer-events:none}.arrange-tile>span{pointer-events:none}.arrange-grip{font-size:.73rem;font-weight:700;color:#4d6880;pointer-events:none}.arrange-controls{display:flex;gap:6px;justify-content:center;touch-action:manipulation}.arrange-controls button{min-width:44px;min-height:44px;touch-action:manipulation}.arrange-drop{outline:4px dashed #215fbb;outline-offset:2px}.arrange-moving{opacity:.67}
