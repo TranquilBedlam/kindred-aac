@@ -50,6 +50,34 @@ function visualFor(word){
  const icon=document.createElement('span');icon.className='emoji';icon.setAttribute('aria-hidden','true');icon.textContent=word.emoji;return icon;
 }
 const controller=new PadController(model,lesson,speaker);
+
+const learningScenes={
+ Bears:[{name:'Bear',emoji:'🐻',feedback:'You found a bear!'},{name:'Trees',emoji:'🌲',feedback:'You found trees!'}],
+ Space:[{name:'Rocket',emoji:'🚀',feedback:'You found a rocket!'},{name:'Moon',emoji:'🌙',feedback:'You found the moon!'}]
+};
+const renderLearning=()=>{
+ const area=$('learning-step');area.hidden=!lesson.choice;
+ if(!lesson.choice)return;
+ $('learning-heading').textContent=lesson.choice==='Bears'?'Explore the forest':'Explore space';
+ const options=$('learning-options');options.replaceChildren();
+ for(const option of learningScenes[lesson.choice]){
+  const button=document.createElement('button');button.type='button';button.className='learning-option';
+  button.setAttribute('aria-pressed',String(lesson.discovery===option.name));
+  const picture=document.createElement('span');picture.textContent=option.emoji;picture.setAttribute('aria-hidden','true');
+  const name=document.createElement('strong');name.textContent=option.name;
+  button.append(picture,name);
+  button.onclick=()=>{
+   if(lesson.paused)return;
+   lesson.explore(option.name);
+   // Informational narration is optional; visual feedback works with sound off.
+   try{speaker(option.name);}catch(error){$('lesson-status').textContent=error.message;}
+   render();
+  };
+  options.append(button);
+ }
+};
+$('learning-back').onclick=()=>{if(lesson.paused)return;lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));render();};
+
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -61,7 +89,8 @@ const render=()=>{
  $('message-label').textContent=controller.communicationMode==='quick'?'Last word':'My message';
  $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
  $('close').hidden=controller.mode==='always';
- $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.choice?`You chose ${lesson.choice}. You can still use Talk anytime.`:'You can choose a story, or open Talk anytime.';
+ renderLearning();
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':lesson.discovery?`You chose ${lesson.discovery}. Explore more or open Talk anytime.`:lesson.choice?`Explore ${lesson.choice}, or open Talk anytime.`:'You can choose a story, or open Talk anytime.';
 };
 const perform=async fn=>{try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
 function buildIconPicker(host,input){
