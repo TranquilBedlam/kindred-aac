@@ -42,3 +42,9 @@
 .parent-pane[data-parent-pane="voice"] .voice-controls select{max-width:none;width:100%}
 .parent-pane[data-parent-pane="voice"] #voice-hint{grid-column:1 / -1}
 @media(max-width:570px){.parent-pane[data-parent-pane="voice"] .voice-controls{grid-template-columns:1fr}}
+
+/* v0.13 caregiver PIN recovery */
+.pin-recovery{background:#eff7fc;border:1px solid #b8d5e6;border-radius:14px;padding:16px;margin:14px 0;display:grid;gap:10px}
+.pin-recovery label{font-weight:650}.pin-recovery input{width:100%;min-width:0;max-width:100%;min-height:44px;padding:10px;border:1px solid #a7c1d2;border-radius:10px}
+.recovery-output{display:block;overflow-wrap:anywhere;padding:12px;background:#fff;border:1px dashed #577e9f;border-radius:10px;font-family:ui-monospace,monospace;font-size:clamp(14px,2vw,20px);letter-spacing:.06em}
+#forgot-pin{margin-top:10px}
