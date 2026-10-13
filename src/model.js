@@ -41,6 +41,15 @@ export class CommunicationModel {
     const item=this.words.find(w=>w.id===id);if(!item)throw new Error('Unknown symbol');
     this.words=this.words.filter(w=>w.id!==id);this.ids.delete(id);this.message=this.message.filter(x=>x!==id);
   }
+  moveWord(id,targetId,after=false){
+    const from=this.words.findIndex(w=>w.id===id),to=this.words.findIndex(w=>w.id===targetId);
+    if(from<0||to<0)throw new Error('Unknown symbol');
+    if(from===to)return false;
+    const [word]=this.words.splice(from,1);
+    const destination=this.words.findIndex(w=>w.id===targetId);
+    this.words.splice(destination+(after?1:0),0,word);
+    return true;
+  }
   restoreBuiltins(){
     const custom=this.words.filter(w=>w.custom);
     this.words=[...this.base.map(w=>({...w})),...custom];
@@ -55,7 +64,7 @@ export class CommunicationModel {
       if(current.label!==base.label||current.emoji!==base.emoji||(current.photo??null)!==null)
         builtins[base.id]={label:current.label,emoji:current.emoji,photo:current.photo??null};
     }
-    return {version:2,builtins,custom:this.exportCustom()};
+    return {version:2,builtins,custom:this.exportCustom(),order:this.words.map(w=>w.id)};
   }
   importVocabulary(data){
     if(Array.isArray(data)){this.importCustom(data);return;}
@@ -67,6 +76,14 @@ export class CommunicationModel {
       if(override===null){fresh.removeWord(id);continue;}
       if(!override||typeof override!=='object')throw new Error('Invalid built-in word.');
       fresh.updateWord(id,override.label,override.emoji,override.photo??null);
+    }
+    if(data.order!==undefined){
+      if(!Array.isArray(data.order)||data.order.length!==fresh.words.length||
+        new Set(data.order).size!==data.order.length||
+        data.order.some(id=>typeof id!=='string'||!fresh.ids.has(id)))
+        throw new Error('Invalid saved word order.');
+      const lookup=new Map(fresh.words.map(w=>[w.id,w]));
+      fresh.words=data.order.map(id=>lookup.get(id));
     }
     this.words=fresh.words;this.ids=fresh.ids;this.sequence=fresh.sequence;
     this.message=this.message.filter(id=>this.ids.has(id));
