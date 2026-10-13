@@ -1,0 +1,30 @@
+const {test,expect}=require('@playwright/test');const {spawn}=require('node:child_process');let server;
+test.beforeAll(async()=>{server=spawn('python3',['-m','http.server','8765','--bind','127.0.0.1'],{stdio:'ignore'});await new Promise(r=>setTimeout(r,1200));});test.afterAll(()=>server?.kill());
+test('explore story choice, use AAC, and return to exploration',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await expect(page.locator('#learning-step')).toBeHidden();
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.locator('#learning-step')).toBeVisible();
+ await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await expect(page.locator('#lesson-status')).toContainText('Bear');
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await expect(page.locator('#lesson-status')).toContainText('paused');
+ await page.locator('#vocab button').first().click();
+ await expect(page.locator('#phrase')).not.toBeEmpty();
+ await page.locator('#close').click();
+ await expect(page.locator('#lesson-status')).toContainText('Bear');
+ await page.locator('#learning-back').click();
+ await expect(page.locator('#learning-step')).toBeHidden();
+ expect(errors).toEqual([]);
+});
+test('switching stories presents different exploratory choices',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('.story[data-choice="Space"]').click();
+ await expect(page.getByRole('button',{name:'Moon',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Bear',exact:true})).toHaveCount(0);
+ await page.locator('#learning-back').click();
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.getByRole('button',{name:'Trees',exact:true})).toBeVisible();
+});
