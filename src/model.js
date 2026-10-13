@@ -103,8 +103,10 @@ export class CommunicationModel {
   }
 }
 export class LessonModel {
-  constructor(){this.activity='story';this.choice=null;this.paused=false;}
-  choose(choice){ if(!['Bears','Space'].includes(choice))throw new Error('Invalid choice');this.choice=choice;}
+  constructor(){this.activity='story';this.choice=null;this.discovery=null;this.paused=false;}
+  choose(choice){ if(!['Bears','Space'].includes(choice))throw new Error('Invalid choice');this.choice=choice;this.discovery=null;}
+  explore(item){const options=this.choice==='Bears'?['Bear','Trees']:this.choice==='Space'?['Rocket','Moon']:[];if(!options.includes(item))throw new Error('Choose a story picture first');this.discovery=item;}
+  back(){this.choice=null;this.discovery=null;}
   pause(){this.paused=true;}
   resume(){this.paused=false;}
 }
