@@ -136,7 +136,18 @@ const tellStory=(words)=>{
  }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
 const mayaWelcome="Hi! I'm Maya. Would you like to explore the forest or go into space?";
+const renderForest=()=>{
+ const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
+ const step=lesson.step;
+ forest.dataset.scene=lesson.completed?'home':String(step);
+ $('forest-character').textContent=step===0?'🐻':step===1?'🐻':'🐻🧣';
+ $('forest-object').textContent=step>=2?'🧣':step===1?'🍂':'❓';
+ $('forest-bird').textContent=step>=1?'🐦':' '; 
+ $('forest-sky').textContent=lesson.completed?'🌈':step>1?'🌤️':'☀️';
+ forest.setAttribute('aria-label',lesson.completed?'Pip is home with his blue scarf':step===2?'Pip finds the blue scarf':step===1?'Pip follows clues in the forest':'Pip searches for his lost scarf');
+};
 const renderLearning=()=>{
+ renderForest();
  const scenes=lesson.choice?storyScenes[lesson.choice]:null;
  $('story-choices').hidden=!!lesson.choice;
  $('learning-options').hidden=!lesson.choice||lesson.completed;
@@ -159,7 +170,9 @@ const renderLearning=()=>{
    const response=scene.responses[name];
    lesson.explore(name);
    render();
-   tellStory(lesson.completed?response+' The end.':response+' '+scenes[lesson.step].line);
+   const next=lesson.completed?' The end.':(' '+scenes[lesson.step].line);
+   const branch=lesson.choice==='Bears'&&lesson.step===2?(lesson.path[0]==='Trees'?' The little bird leads Pip toward a low branch.':' Pip follows the rustling leaves toward a low branch.') : '';
+   tellStory(response+branch+next);
   };
   options.append(button);
  }
