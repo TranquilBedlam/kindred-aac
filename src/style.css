@@ -72,3 +72,5 @@
 .learning-option{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px;min-height:112px;font:inherit;border:2px solid #a8c7dd;border-radius:12px;background:white;color:#17354b}
 .learning-option span{font-size:42px}.learning-option[aria-pressed="true"]{border-color:#1762ad;background:#e6f4ff}
 @media(max-width:350px){.learning-options{grid-template-columns:1fr}}
+
+.learning-narration{font-size:1.2rem;font-weight:650;line-height:1.5;max-width:44rem}.learning-progress{font-weight:700;color:#305d83}.learning-option:active{transform:scale(.97)}#learning-replay{margin-right:12px;margin-bottom:10px}
