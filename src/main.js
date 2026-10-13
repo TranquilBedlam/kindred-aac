@@ -162,9 +162,9 @@ const renderMilo=()=>{
  $('milo-visual').hidden=false;
  $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='Flower'?'🌼':'🍁'):'');
  $('milo-response').hidden=!milo.lastResponse;
- $('milo-response').textContent=milo.lastResponse;
+ $('milo-response').textContent=milo.lastResponse?milo.lastResponse+' You can try another picture or continue the story.':'';
  $('milo-prompt').hidden=milo.finished;
- $('milo-prompt').textContent=scene.prompt+' These are optional story actions. Open Talk to communicate anything.';
+ $('milo-prompt').textContent=scene.prompt;
  $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear this scene';
  const host=$('learning-options');host.replaceChildren();
  if(milo.finished)return;
@@ -173,12 +173,15 @@ const renderMilo=()=>{
   const pic=document.createElement('span');pic.textContent=emoji;pic.setAttribute('aria-hidden','true');
   const word=document.createElement('strong');word.textContent=name;
   button.append(pic,word);
+  button.setAttribute('aria-label',name);
   button.onclick=()=>{if(lesson.paused)return;const reply=milo.choose(name);render();tellStory(reply);};
   host.append(button);
  }
  const next=document.createElement('button');next.type='button';next.className='learning-option';
- next.textContent=milo.step===MILO_SCENES.length-1?'Finish story':'Continue →';
- next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line);};
+ next.textContent=milo.step===MILO_SCENES.length-1?'Finish story':'Continue story →';
+ next.classList.add('milo-continue');
+ next.setAttribute('aria-label',milo.step===MILO_SCENES.length-1?'Finish story':'Continue story without choosing');
+ next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line+' '+milo.scene.prompt);};
  host.append(next);
 };
 const renderLearning=()=>{
@@ -504,5 +507,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line+' '+milo.scene.prompt);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();
