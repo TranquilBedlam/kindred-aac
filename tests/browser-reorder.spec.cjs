@@ -31,7 +31,7 @@ test('parent unlock, reordering, persistence, AAC speech interaction and lock',a
  expect(await rows.evaluateAll(nodes=>nodes.map(n=>n.dataset.wordId))).toEqual(after);
  const water=page.locator('#custom-list .custom-row[data-word-id="water"]');
  const help=page.locator('#custom-list .custom-row[data-word-id="help"]');
- await water.locator('.drag-handle').dragTo(help);
+ await water.locator('.drag-handle').dragTo(help.locator('.drag-handle'),{targetPosition:{x:10,y:12}});
  await expect(rows.first()).toHaveAttribute('data-word-id','water');
  await page.locator('#exit-parent').click();
  await page.locator('#talk').click();
