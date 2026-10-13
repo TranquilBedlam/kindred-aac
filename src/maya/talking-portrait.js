@@ -37,8 +37,16 @@ export class TalkingPortrait {
  begin(){
   this.stopMotion();
   this.host.classList.add('tp-talking');
-  const frames=['ah','half','oh','half','ah','closed'];
-  let i=0;this.mouthTimer=setInterval(()=>this.setMouth(frames[i++%frames.length]),115);
+  // Gentle fallback when the browser does not report spoken word boundaries.
+  const frames=['half','ah','half','closed'];
+  let i=0;this.mouthTimer=setInterval(()=>this.setMouth(frames[i++%frames.length]),185);
+ }
+ word(spoken){
+  // Word boundaries are browser-dependent, not phoneme timestamps.
+  // Approximate a suitable mouth shape without pretending exact lip sync.
+  if(this.closed||!this.mouthTimer)return;
+  const word=String(spoken||'').trim().toLowerCase();
+  this.setMouth(/[ou]/.test(word)?'oh':/[aei]/.test(word)?'ah':'half');
  }
  end(){this.stopMotion();this.setMouth('closed');}
  stopMotion(){clearInterval(this.mouthTimer);this.mouthTimer=null;this.host.classList.remove('tp-talking');}

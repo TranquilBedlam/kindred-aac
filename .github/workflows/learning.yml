@@ -17,4 +17,4 @@ jobs:
       - run: node --test tests/learning.test.mjs tests/reorder.test.mjs
       - run: npm install --no-save @playwright/test
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/browser-learning.spec.cjs tests/browser-arrange.spec.cjs --browser chromium --reporter=list
+      - run: npx playwright test tests/browser-learning.spec.cjs tests/browser-arrange.spec.cjs --browser chromium --workers=1 --reporter=list
