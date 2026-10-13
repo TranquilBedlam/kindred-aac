@@ -62,3 +62,22 @@ test('real touch events rearrange picture tiles on tablet emulation',async({brow
  await expect(page.locator('#arrange-grid .arrange-tile').first()).toHaveAttribute('data-word-id','water');
  await context.close();
 });
+
+test('phone touch gesture on drag handle moves picture without scrolling page',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+ const page=await context.newPage();
+ await unlock(page);
+ const from=page.locator('#arrange-grid .arrange-tile[data-word-id="water"] .arrange-grip');
+ const to=page.locator('#arrange-grid .arrange-tile[data-word-id="help"] .arrange-grip');
+ await from.scrollIntoViewIfNeeded();
+ const a=await from.boundingBox(),b=await to.boundingBox();
+ const sx=a.x+a.width/2,sy=a.y+a.height/2,dx=b.x+b.width/2,dy=b.y+b.height/2;
+ const before=await page.evaluate(()=>window.scrollY);
+ const cdp=await context.newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy}]});
+ for(let k=1;k<=14;k++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx+(dx-sx)*k/14,y:sy+(dy-sy)*k/14}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect(page.locator('#arrange-grid .arrange-tile').first()).toHaveAttribute('data-word-id','water');
+ expect(Math.abs((await page.evaluate(()=>window.scrollY))-before)).toBeLessThan(5);
+ await context.close();
+});
