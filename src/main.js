@@ -1,4 +1,5 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
+import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
@@ -101,6 +102,8 @@ let challenge=createChallenge();
 const storedPin=()=>{try{return JSON.parse(localStorage.getItem(parentKey)||'null');}catch{return null;}};
 const newChallenge=()=>{
  challenge=createChallenge();
+ $('forgot-pin').hidden=!storedPin();
+ $('recover-panel').hidden=true;
  const hasPin=Boolean(storedPin());
  $('parent-question').textContent=hasPin?'Enter caregiver PIN':`Adult question: ${challenge.a} + ${challenge.b} = ?`;
  $('parent-answer').value='';
@@ -122,30 +125,61 @@ $('unlock-parent').onsubmit=async e=>{
  let okay=false;
  if(record){okay=validPin(answer)&&await pinDigest(answer,record.salt)===record.digest;}
  else okay=verifyChallenge(challenge.a,challenge.b,answer);
- if(okay){$('parent-status').textContent='';setUnlocked(true);}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
+ if(okay){$('parent-status').textContent='';setUnlocked(true);try{const code=sessionStorage.getItem('kindred-pending-recovery-code');if(code){sessionStorage.removeItem('kindred-pending-recovery-code');selectParentTab('security');showRecoveryCode(code);}}catch{}}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
 };
 $('lock-parent').onclick=()=>setUnlocked(false);
+const showRecoveryCode=code=>{$('recovery-code-output').textContent=code;$('recovery-code-display').hidden=false;$('recovery-setup-status').textContent='Save this code in a safe place. Anyone with it and access to this browser can reset the PIN.';};
+$('hide-recovery-code').onclick=()=>{$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;$('recovery-setup-status').textContent='Recovery code hidden. Store your copy safely.';};
 $('set-parent-pin').onclick=async()=>{
  const status=$('pin-status');
  if(!unlocked){status.textContent='Unlock Parent Settings first.';return;}
  const pin=$('parent-pin').value.trim();
  if(!validPin(pin)){status.textContent='PIN must contain 4 to 8 numbers only.';return;}
- if(!confirm('Save this caregiver PIN on this device? You will need to remember it.')){status.textContent='PIN setup cancelled.';return;}
+ if(!confirm('Save your PIN and generate a recovery code? Store the code safely.'))return;
  try{
-  if(!globalThis.crypto?.subtle||!globalThis.crypto?.getRandomValues)throw new Error('Secure browser features are unavailable. Open the HTTPS demo in a modern browser.');
-  const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
-  const digest=await pinDigest(pin,salt);
-  localStorage.setItem(parentKey,JSON.stringify({salt,digest}));
-  const readBack=storedPin();
-  if(readBack?.digest!==digest)throw new Error('Unable to verify saved PIN.');
+  const {record,code}=await makeRecoveryRecord(pin);
+  localStorage.setItem(parentKey,JSON.stringify(record));
+  if(storedPin()?.recoveryDigest!==record.recoveryDigest)throw Error('Could not verify saved recovery information.');
   $('parent-pin').value='';
-  status.textContent='✓ PIN saved. Select Lock settings, then enter your PIN to unlock.';newChallenge();
- }catch(err){status.textContent='PIN not saved: '+(err?.message||'browser storage unavailable');}
+  status.textContent='PIN saved. Store the new recovery code before locking settings.';
+  showRecoveryCode(code);newChallenge();
+ }catch(e){status.textContent='PIN not saved: '+(e?.message||'storage unavailable');}
+};
+$('generate-recovery').onclick=async()=>{
+ if(!unlocked)return;
+ try{
+  const old=storedPin();if(!old)throw Error('Set a PIN first.');
+  if(!confirm('Create a new recovery code? Any previous recovery code will stop working.'))return;
+  const {record,code}=await addRecoveryToExisting(old);
+  localStorage.setItem(parentKey,JSON.stringify(record));
+  if(storedPin()?.recoveryDigest!==record.recoveryDigest)throw Error('Could not verify saved recovery code.');
+  showRecoveryCode(code);
+ }catch(e){$('recovery-setup-status').textContent='Recovery code not saved: '+(e?.message||'unknown error');}
+};
+$('forgot-pin').onclick=()=>{
+ $('recover-panel').hidden=false;$('unlock-parent').hidden=true;$('forgot-pin').hidden=true;
+ $('recovery-status').textContent=storedPin()?.recoveryDigest?'Enter the recovery code saved when you set up your PIN.':'This PIN has no recovery code yet. A code must be created while Parent Settings is unlocked; this prototype cannot bypass an existing PIN.';
+ $('recovery-code-input').focus();
+};
+$('cancel-recovery').onclick=()=>{$('unlock-parent').hidden=false;newChallenge();};
+$('reset-with-recovery').onclick=async()=>{
+ const status=$('recovery-status'),code=$('recovery-code-input').value,pin=$('replacement-pin').value.trim();
+ try{
+  const result=await resetPinWithRecovery(storedPin(),code,pin);
+  localStorage.setItem(parentKey,JSON.stringify(result.record));
+  if(storedPin()?.recoveryDigest!==result.record.recoveryDigest)throw Error('Unable to verify saved credentials.');
+  $('recovery-code-input').value='';$('replacement-pin').value='';
+  $('unlock-parent').hidden=false;newChallenge();
+  $('parent-status').textContent='PIN reset successfully. Use your new PIN to unlock.';
+  status.textContent='';
+  // Recovery code was rotated: reveal it only after successful PIN unlock in Security.
+  sessionStorage.setItem('kindred-pending-recovery-code',result.code);
+ }catch(e){status.textContent=(e.message==='Invalid recovery code.'?'Recovery code incorrect. Please try again.':e.message);}
 };
 $('remove-parent-pin').onclick=()=>{
  if(!unlocked||!storedPin())return;
  if(!confirm('Remove this caregiver PIN? Future access will use an adult question.'))return;
- try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';newChallenge();}catch{$('pin-status').textContent='Could not remove PIN.';}
+ try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;newChallenge();}catch{$('pin-status').textContent='Could not remove PIN.';}
 };
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
 const renderVocabulary=()=>{
