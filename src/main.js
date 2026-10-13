@@ -1,4 +1,5 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
+import {TalkingPortrait} from './maya/talking-portrait.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
 import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
@@ -51,6 +52,21 @@ function visualFor(word){
 }
 const controller=new PadController(model,lesson,speaker);
 
+let mayaPortrait=null;
+let mayaEnabled=true;
+TalkingPortrait.create($('maya-portrait'),'src/maya/characters/maya').then(p=>{
+ mayaPortrait=p;
+ if(!mayaEnabled)p.host.hidden=true;
+}).catch(()=>{
+ $('maya-portrait').setAttribute('aria-label','Maya artwork is not installed; story choices remain available.');
+});
+$('maya-toggle').onclick=()=>{
+ mayaEnabled=!mayaEnabled;
+ $('maya-toggle').setAttribute('aria-pressed',String(mayaEnabled));
+ $('maya-toggle').textContent=mayaEnabled?'Maya on':'Maya off';
+ $('maya-portrait').hidden=!mayaEnabled;
+ if(!mayaEnabled)mayaPortrait?.end();
+};
 const storyScenes={
  Bears:[
   {line:'A little bear wakes up in the forest. What should the bear explore?',choices:[['Bear','🐻'],['Trees','🌲']]},
@@ -64,11 +80,29 @@ const storyScenes={
  ]
 };
 const tellStory=(words)=>{
+ if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
+  $('learning-voice-status').textContent='Voice is unavailable here. Follow the written story or try a browser with speech.';
+  return;
+ }
  try{
-  // Called only directly from a child/caregiver tap to satisfy mobile audio policies.
-  speaker(words);
-  $('learning-voice-status').textContent='Narration requested. If silent, check device volume or tap Hear story again.';
- }catch(error){$('learning-voice-status').textContent=error.message;}
+  const engine=window.speechSynthesis;
+  // Cancel only narration when choosing a new scene. AAC speech can interrupt narration.
+  engine.cancel();
+  mayaPortrait?.end();
+  const utterance=new SpeechSynthesisUtterance(words);
+  utterance.lang='en-US';
+  utterance.rate=.88;
+  const voices=engine.getVoices();
+  const preferred=voices.find(v=>v.voiceURI===$('voice').value)||
+   voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang?.startsWith('en'));
+  if(preferred)utterance.voice=preferred;
+  utterance.onstart=()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is telling the story.';};
+  utterance.onend=()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Story narration finished.';};
+  utterance.onerror=e=>{mayaPortrait?.end();$('learning-voice-status').textContent='Audio unavailable ('+(e.error||'unknown')+'). The story remains readable.';};
+  engine.speak(utterance);
+  if(engine.paused)engine.resume();
+  $('learning-voice-status').textContent='Starting narration…';
+ }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
 const renderLearning=()=>{
  const area=$('learning-step');area.hidden=!lesson.choice;
