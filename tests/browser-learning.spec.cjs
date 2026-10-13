@@ -43,3 +43,18 @@ test('Maya original image layers load, can be hidden and do not block AAC',async
  await expect(page.locator('#pad')).toBeVisible();
  await expect(page.locator('#vocab button').first()).toHaveAttribute('aria-label','Help');
 });
+
+test('Maya American voice selection and preview never change AAC voice',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.locator('#maya-voice')).toBeVisible();
+ await expect(page.locator('#maya-voice-preview')).toBeVisible();
+ await page.locator('#maya-voice-preview').click();
+ await expect(page.locator('#learning-voice-status')).not.toBeEmpty();
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await page.locator('#vocab button').first().click();
+ await expect(page.locator('#phrase')).not.toBeEmpty();
+ expect(errors).toEqual([]);
+});
