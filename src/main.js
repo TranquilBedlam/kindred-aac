@@ -182,12 +182,12 @@ $('remove-parent-pin').onclick=()=>{
 };
 buildIconPicker($('add-icon-picker'),$('new-symbol'));
 
-const movePicture=(source,target)=>{
+const movePicture=(source,target,after=false)=>{
  if(!unlocked){$('arrange-status').textContent='Unlock Parent Settings to arrange pictures.';return;}
  if(source===target)return;
  const before=model.exportVocabulary();
  try{
-  model.moveWord(source,target);
+  model.moveWord(source,target,after);
   if(!saveVocabulary()){model.importVocabulary(before);$('arrange-status').textContent='Could not save arrangement. Previous order restored.';renderVocabulary();return;}
   $('arrange-status').textContent='Picture order saved on this device.';
   renderVocabulary();
