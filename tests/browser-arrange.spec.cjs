@@ -62,3 +62,14 @@ test('real touch events rearrange picture tiles on tablet emulation',async({brow
  await expect(page.locator('#arrange-grid .arrange-tile').first()).toHaveAttribute('data-word-id','water');
  await context.close();
 });
+
+test('Manage Words has no reorder buttons or drag handles, Arrange Pad retains ordering',async({page})=>{
+ await unlock(page);
+ await page.locator('[data-parent-tab="words"]').click();
+ await expect(page.locator('#custom-list .move-word')).toHaveCount(0);
+ await expect(page.locator('#custom-list .drag-handle')).toHaveCount(0);
+ await expect(page.locator('#custom-list .custom-row button')).toHaveCount(34);
+ await page.locator('[data-parent-tab="arrange"]').click();
+ await expect(page.locator('#arrange-grid .arrange-grip')).toHaveCount(17);
+ await expect(page.getByRole('button',{name:'Move later: Help'})).toBeVisible();
+});

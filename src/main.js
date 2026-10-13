@@ -278,59 +278,7 @@ const renderVocabulary=()=>{
    edit.onclick=()=>{if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}editor.classList.toggle('hidden');if(!editor.classList.contains('hidden'))symbolInput.focus();};
    editor.onsubmit=async e=>{e.preventDefault();if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}try{const photo=noPhoto.checked?null:photoInput.files?.length?await compressPhoto(photoInput.files[0]):w.photo??null;model.updateWord(w.id,wordInput.value,symbolInput.value,photo);if(!saveVocabulary())return;$('edit-status').textContent='Saved changes to '+wordInput.value.trim();renderVocabulary();render();}catch(error){$('edit-status').textContent=error.message;}};
    const del=document.createElement('button');del.type='button';del.className='quiet';del.textContent='Remove';del.disabled=['help','stop','break'].includes(w.id);del.title=del.disabled?'This essential communication button cannot be removed':'';del.onclick=()=>{if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}if(!confirm('Remove '+w.label+' from the pad?'))return;try{model.removeWord(w.id);}catch(err){$('edit-status').textContent=err.message;return;}saveVocabulary();$('edit-status').textContent='Removed '+w.label;renderVocabulary();render();};
-   const move=(id,targetId,after=false)=>{
-     if(!unlocked){$('edit-status').textContent='Unlock Parent Settings to move words.';return;}
-     if(id===targetId)return;
-     const backup=model.exportVocabulary();
-     try{
-       model.moveWord(id,targetId,after);
-       if(!saveVocabulary()){model.importVocabulary(backup);renderVocabulary();return;}
-       $('edit-status').textContent='Moved word. New order saved to this device.';
-       renderVocabulary();
-     }catch(err){model.importVocabulary(backup);$('edit-status').textContent=err.message;}
-   };
-   const index=model.words.findIndex(item=>item.id===w.id);
-   const previous=model.words[index-1],next=model.words[index+1];
-   const up=document.createElement('button');up.type='button';up.className='quiet move-word';up.textContent='↑';up.title='Move '+w.label+' up';up.setAttribute('aria-label',up.title);up.disabled=!previous;
-   up.onclick=()=>{if(previous)move(w.id,previous.id);};
-   const down=document.createElement('button');down.type='button';down.className='quiet move-word';down.textContent='↓';down.title='Move '+w.label+' down';down.setAttribute('aria-label',down.title);down.disabled=!next;
-   down.onclick=()=>{if(next)move(w.id,next.id,true);};
-   row.dataset.wordId=w.id;row.setAttribute('aria-label',w.label+', position '+(index+1)+' of '+model.words.length);
-   const grip=document.createElement('span');grip.className='drag-handle';grip.textContent='⠿';grip.title='Drag to move '+w.label;grip.setAttribute('aria-hidden','true');
-   // Use pointer events rather than HTML5 drag/drop: works on mouse and touch.
-   grip.addEventListener('pointerdown',start=>{
-     if(!unlocked||start.button!==0)return;
-     start.preventDefault();
-     const originX=start.clientX,originY=start.clientY;
-     let lastTarget=null;
-     const findTarget=e=>document.elementFromPoint(e.clientX,e.clientY)?.closest('.custom-row');
-     const clear=()=>{
-       document.removeEventListener('pointermove',moving);
-       document.removeEventListener('pointerup',finish);
-       document.removeEventListener('pointercancel',cancel);
-       document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));
-     };
-     const moving=e=>{
-       if(!unlocked)return;
-       const candidate=findTarget(e);
-       if(lastTarget!==candidate){lastTarget?.classList.remove('drop-target');lastTarget=candidate;}
-       if(lastTarget?.dataset.wordId!==w.id)lastTarget?.classList.add('drop-target');
-     };
-     const finish=e=>{
-       const target=findTarget(e),distance=Math.hypot(e.clientX-originX,e.clientY-originY);
-       clear();
-       if(unlocked&&distance>=12&&target?.dataset.wordId&&target.dataset.wordId!==w.id)move(w.id,target.dataset.wordId);
-     };
-     const cancel=()=>clear();
-     document.addEventListener('pointermove',moving);
-     document.addEventListener('pointerup',finish);
-     document.addEventListener('pointercancel',cancel);
-   });
-   row.addEventListener('dragover',e=>{if(!unlocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('drop-target');});
-   row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));
-   row.addEventListener('dragend',()=>document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target')));
-   row.addEventListener('drop',e=>{e.preventDefault();row.classList.remove('drop-target');if(!unlocked)return;const dragged=e.dataTransfer.getData('text/plain');if(!model.ids.has(dragged))return;move(dragged,w.id);});
-   row.append(grip,label,up,down,edit,del);$('custom-list').append(row,editor);
+   row.append(label,edit,del);$('custom-list').append(row,editor);
  }
 };
 $('add-word').onsubmit=async e=>{e.preventDefault();if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}try{const photo=await compressPhoto($('new-photo').files?.[0]);const w=model.addCustom($('new-word').value,$('new-symbol').value,photo);saveVocabulary();$('new-word').value='';$('new-symbol').value='💬';$('new-photo').value='';$('add-icon-picker').resetSelection();$('edit-status').textContent='Added '+w.label;renderVocabulary();render();}catch(err){$('edit-status').textContent=err.message;}};
