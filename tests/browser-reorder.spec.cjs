@@ -47,3 +47,30 @@ test('unauthenticated parent editing is hidden',async({page})=>{
  await expect(page.locator('#caregiver-editor')).toBeHidden();
  await expect(page.locator('#custom-list')).toBeHidden();
 });
+
+test('touch drag handle reorders words on a tablet emulation',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:820,height:1180},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+ const page=await context.newPage();
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#open-parent-settings').click();
+ const question=await page.locator('#parent-question').innerText();
+ const numbers=question.match(/(\\d+)\\s*\\+\\s*(\\d+)/);
+ await page.locator('#parent-answer').fill(String(Number(numbers[1])+Number(numbers[2])));
+ await page.locator('#unlock-parent button[type="submit"]').click();
+ const from=page.locator('#custom-list .custom-row[data-word-id="water"] .drag-handle');
+ const to=page.locator('#custom-list .custom-row[data-word-id="help"] .drag-handle');
+ await from.scrollIntoViewIfNeeded();
+ const src=await from.boundingBox(),dst=await to.boundingBox();
+ const sx=src.x+src.width/2,sy=src.y+src.height/2,dx=dst.x+dst.width/2,dy=dst.y+dst.height/2;
+ const client=await context.newCDPSession(page);
+ await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy}]});
+ for(let i=1;i<=12;i++)await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx+(dx-sx)*i/12,y:sy+(dy-sy)*i/12}]});
+ await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect(page.locator('#custom-list .custom-row').first()).toHaveAttribute('data-word-id','water');
+ await page.reload();
+ await page.locator('#talk').click();
+ await expect(page.locator('#vocab button').first()).toHaveAttribute('aria-label','Water');
+ expect(errors).toEqual([]);
+ await context.close();
+});
