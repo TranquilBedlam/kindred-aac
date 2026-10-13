@@ -70,9 +70,9 @@ $('maya-toggle').onclick=()=>{
 // Story grammar: character, small problem, meaningful choices, resolution.
 const storyScenes={
  Bears:[
-  {line:'Pip the little bear has lost his favorite blue scarf. It is getting chilly. Where should Pip look first?',choices:[['Bear','🐻'],['Trees','🌲']],responses:{Bear:'Pip checks his paws and pockets. No scarf! A little breeze rustles the trees.',Trees:'Pip peeks behind a tall tree. There are tiny footprints in the leaves!'}},
-  {line:'A little bird chirps nearby. Pip hears something fluttering above him. What should Pip look at?',choices:[['Trees','🌲'],['Bear','🐻']],responses:{Trees:'There it is! The blue scarf is caught on a low branch.',Bear:'Pip stretches up on tiptoes. He spots something blue in the branches!'}},
-  {line:'Pip has found his scarf! He wraps up warm. What should he do before going home?',choices:[['Bear','🐻'],['Trees','🌲']],responses:{Bear:'Pip gives a happy wiggle. What a cozy ending!',Trees:'Pip waves goodbye to the forest. What a cozy ending!'}}
+  {line:'Pip the bear has lost his blue scarf. Cold wind whispers through the forest. Where could it be?',choices:[['Look under leaves','🍂'],['Follow the footprints','🐾']],responses:{'Look under leaves':'Pip lifts the golden leaves. A little feather is hiding beneath them!','Follow the footprints':'Pip follows tiny footprints. They lead toward the tallest tree.'}},
+  {line:'A friendly bird flutters above a low branch. Something blue waves in the breeze. How can Pip get closer?',choices:[['Ask the bird','🐦'],['Reach for the branch','🌿']],responses:{'Ask the bird':'The bird chirps and gently nudges the blue scarf down to Pip.','Reach for the branch':'Pip stretches up, up, up, and the soft blue scarf slips into his paws!'}},
+  {line:'Pip has his scarf again. He feels warm and safe. How should we finish the adventure?',choices:[['Thank the bird','💛'],['Head home','🏡']],responses:{'Thank the bird':'Pip waves his scarf to say thank you. The bird sings a happy little song.','Head home':'Pip follows the cozy path home. He snuggles up as the sun goes down.'}}
  ],
  Space:[
   {line:'Nova the little astronaut is ready to visit the moon, but her rocket needs a destination. Where shall she go?',choices:[['Rocket','🚀'],['Moon','🌙']],responses:{Rocket:'Nova checks every button. The engines begin to hum!',Moon:'Nova points to the bright moon. That is the perfect place to explore!'}},
@@ -136,7 +136,18 @@ const tellStory=(words)=>{
  }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
 const mayaWelcome="Hi! I'm Maya. Would you like to explore the forest or go into space?";
+const renderForest=()=>{
+ const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
+ const step=lesson.step;
+ forest.dataset.scene=lesson.completed?'home':String(step);
+ $('forest-character').textContent=step===0?'🐻':step===1?'🐻':'🐻🧣';
+ $('forest-object').textContent=step>=2?'🧣':step===1?'🍂':'❓';
+ $('forest-bird').textContent=step>=1?'🐦':' '; 
+ $('forest-sky').textContent=lesson.completed?'🌈':step>1?'🌤️':'☀️';
+ forest.setAttribute('aria-label',lesson.completed?'Pip is home with his blue scarf':step===2?'Pip finds the blue scarf':step===1?'Pip follows clues in the forest':'Pip searches for his lost scarf');
+};
 const renderLearning=()=>{
+ renderForest();
  const scenes=lesson.choice?storyScenes[lesson.choice]:null;
  $('story-choices').hidden=!!lesson.choice;
  $('learning-options').hidden=!lesson.choice||lesson.completed;
@@ -145,6 +156,7 @@ const renderLearning=()=>{
  $('learning-progress').textContent=!lesson.choice?'Choose an adventure':lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
  const scene=lesson.choice&&!lesson.completed?scenes[lesson.step]:null;
  $('learning-narration').textContent=!lesson.choice?mayaWelcome:scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('forest-caption').textContent=lesson.choice==='Bears'?lesson.lastEvent:'';
  $('learning-replay').textContent=!lesson.choice?'🔊 Hear Maya':lesson.completed?'Play story again':'🔊 Hear story again';
  const options=$('learning-options');options.replaceChildren();
  if(!scene)return;
@@ -158,8 +170,11 @@ const renderLearning=()=>{
    if(lesson.paused)return;
    const response=scene.responses[name];
    lesson.explore(name);
+   lesson.lastEvent=response;
    render();
-   tellStory(lesson.completed?response+' The end.':response+' '+scenes[lesson.step].line);
+   const next=lesson.completed?' The end.':(' '+scenes[lesson.step].line);
+   const branch=lesson.choice==='Bears'&&lesson.step===2?(lesson.path[0]==='Follow the footprints'?' The footprints helped Pip find the scarf.':' The feather helped Pip find his bird friend.') : '';
+   tellStory(response+branch+next);
   };
   options.append(button);
  }

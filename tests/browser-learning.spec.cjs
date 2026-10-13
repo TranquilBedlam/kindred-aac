@@ -5,10 +5,10 @@ test('narrated story advances through scenes and can replay',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
  await page.locator('.story[data-choice="Bears"]').click();
  await expect(page.locator('#learning-progress')).toHaveText('Page 1 of 3');
- await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await page.getByRole('button',{name:'Look under leaves',exact:true}).click();
  await expect(page.locator('#learning-progress')).toHaveText('Page 2 of 3');
- await page.getByRole('button',{name:'Trees',exact:true}).click();
- await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await page.getByRole('button',{name:'Ask the bird',exact:true}).click();
+ await page.getByRole('button',{name:'Head home',exact:true}).click();
  await expect(page.locator('#learning-progress')).toHaveText('The end!');
  await page.locator('#learning-replay').click();
  await expect(page.locator('#learning-progress')).toHaveText('Page 1 of 3');
@@ -86,15 +86,38 @@ test('Maya remains visible on the left as adventure choices change on phone',asy
  await context.close();
 });
 
-test('narration follows story events without repetitive picked confirmation',async({page})=>{
+test('Forest story follows choice consequences without scripted confirmations',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
  await page.locator('.story[data-choice="Bears"]').click();
- await expect(page.locator('#learning-narration')).toContainText('lost his favorite blue scarf');
- await page.getByRole('button',{name:'Trees',exact:true}).click();
- await expect(page.locator('#learning-narration')).toContainText('bird chirps');
- await expect(page.locator('#learning-narration')).not.toContainText('You picked');
- await page.getByRole('button',{name:'Bear',exact:true}).click();
- await expect(page.locator('#learning-narration')).toContainText('found his scarf');
- await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await expect(page.locator('#learning-narration')).toContainText('lost his blue scarf');
+ await page.getByRole('button',{name:'Follow the footprints'}).click();
+ await expect(page.locator('#forest-caption')).toContainText('footprints');
+ await page.getByRole('button',{name:'Ask the bird'}).click();
+ await expect(page.locator('#forest-caption')).toContainText('gently nudges');
+ await page.getByRole('button',{name:'Thank the bird'}).click();
  await expect(page.locator('#learning-progress')).toHaveText('The end!');
+ await expect(page.locator('#forest-caption')).not.toContainText('You picked');
+});
+
+test('Forest illustration updates and AAC remains independent',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/');
+ await expect(page.locator('#forest-scene')).toBeHidden();
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.locator('#forest-scene')).toBeVisible();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','0');
+ await page.getByRole('button',{name:'Look under leaves'}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','1');
+ await expect(page.locator('#forest-caption')).toContainText('feather');
+ await page.locator('#talk').click();
+ await expect(page.locator('#pad')).toBeVisible();
+ await page.locator('#vocab button').first().click();
+ await expect(page.locator('#phrase')).not.toBeEmpty();
+ await page.locator('#close').click();
+ await page.getByRole('button',{name:'Reach for the branch'}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','2');
+ await page.getByRole('button',{name:'Head home'}).click();
+ await expect(page.locator('#forest-scene')).toHaveAttribute('data-scene','home');
+ await expect(page.locator('#forest-caption')).toContainText('cozy path');
+ expect(errors).toEqual([]);
 });

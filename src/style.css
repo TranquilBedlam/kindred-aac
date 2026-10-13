@@ -97,3 +97,11 @@
 .lesson .maya-preferences summary{cursor:pointer;font-weight:600}
 .lesson .maya-voice-controls{margin:10px 0}
 @media(max-width:640px){.lesson .story-scene{grid-template-columns:minmax(115px,38%) minmax(0,1fr);gap:12px}.lesson .maya-portrait{min-height:0;max-width:none;margin:0}.lesson .story-content .cards,.lesson .story-content .learning-options{grid-template-columns:1fr}.lesson .story-content .story{min-height:85px;padding:9px}.lesson .story-content .learning-option{min-height:94px}.lesson .learning-narration{font-size:1rem}}
+
+/* Story illustration is presentational and never blocks picture selection. */
+.forest-scene{height:180px;position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(180deg,#bbecfa 0%,#f2fce6 65%,#78c383 66%,#4da46d 100%);margin:10px 0 16px;isolation:isolate}
+.forest-scene[hidden]{display:none!important}.forest-scene span{position:absolute;display:block;transition:transform .45s ease,opacity .45s ease}
+#forest-sky{top:12px;right:22px;font-size:35px}#forest-trees{bottom:30px;left:6%;font-size:57px;white-space:nowrap}#forest-character{bottom:6px;left:35%;font-size:78px;z-index:2}#forest-object{bottom:22px;right:22%;font-size:40px;z-index:3}#forest-bird{top:26px;left:35%;font-size:32px}
+.forest-scene[data-scene="1"] #forest-character{transform:translateX(24px)}.forest-scene[data-scene="2"] #forest-object{transform:translateY(-18px) rotate(-12deg)}.forest-scene[data-scene="home"] #forest-character{transform:translateX(25px) scale(1.08)}
+@media(prefers-reduced-motion:reduce){.forest-scene span{transition:none!important}}
+@media(max-width:640px){.forest-scene{height:135px}#forest-trees{font-size:37px}#forest-character{font-size:55px}#forest-object{font-size:30px}}
