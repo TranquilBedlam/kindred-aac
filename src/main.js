@@ -375,8 +375,8 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
 };
 renderVocabulary();
 $('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
-$('talk').onclick=()=>{if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
-$('pin').onclick=()=>{if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
+$('talk').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
+$('pin').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
 $('close').onclick=()=>{controller.close();render();};
 $('speak').onclick=()=>perform(()=>controller.speak());
 $('quick-mode').onclick=()=>{controller.setCommunicationMode('quick');render();};
