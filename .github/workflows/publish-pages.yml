@@ -20,13 +20,29 @@ jobs:
     steps:
       - name: Check out published app
         uses: actions/checkout@v4
-      - name: Confirm website entry and Maya story assets
+      - name: Confirm release assets with clear diagnostics
+        shell: bash
         run: |
-          test -s index.html
-          test -s src/main.js
-          test -s src/maya/characters/maya/layers.json
-          grep -q "Follow the footprints" src/main.js
-          grep -q 'v=0.18.0' index.html
+          set -euo pipefail
+          echo "Published commit: $(git rev-parse --short HEAD)"
+          echo "Files in release root:"
+          ls -la
+          for file in index.html src/main.js src/maya/characters/maya/layers.json; do
+            if [ ! -s "$file" ]; then
+              echo "::error::Missing or empty release file: $file"
+              exit 1
+            fi
+            echo "Found: $file"
+          done
+          if ! grep -Fq 'Follow the footprints' src/main.js; then
+            echo "::error::Expected Forest adventure choice missing from src/main.js"
+            exit 1
+          fi
+          if ! grep -Fq 'v=0.18.0' index.html; then
+            echo "::error::index.html does not reference the v0.18.0 release"
+            exit 1
+          fi
+          echo "All v0.18.0 release checks passed"
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
