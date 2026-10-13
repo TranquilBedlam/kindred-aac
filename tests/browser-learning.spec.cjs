@@ -86,3 +86,16 @@ test('Maya remains visible on the left as adventure choices change on phone',asy
  expect(errors).toEqual([]);
  await context.close();
 });
+
+test('narration follows story events without repetitive picked confirmation',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/');
+ await page.locator('.story[data-choice="Bears"]').click();
+ await expect(page.locator('#learning-narration')).toContainText('lost his favorite blue scarf');
+ await page.getByRole('button',{name:'Trees',exact:true}).click();
+ await expect(page.locator('#learning-narration')).toContainText('bird chirps');
+ await expect(page.locator('#learning-narration')).not.toContainText('You picked');
+ await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await expect(page.locator('#learning-narration')).toContainText('found his scarf');
+ await page.getByRole('button',{name:'Bear',exact:true}).click();
+ await expect(page.locator('#learning-progress')).toHaveText('The end!');
+});
