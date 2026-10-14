@@ -26,9 +26,7 @@ test('both scene-one choices play correct real Pip response and advance only aft
   // Audio is created with new Audio(), so network fetch proves the selected file actually loads.
   const mp3=await page.request.get(url+'audio/'+clip);expect(mp3.ok()).toBeTruthy();
   await expect(page.locator('#milo-response')).not.toBeEmpty();
-  await expect(page.locator('#learning-options .milo-continue')).toBeVisible();
-  await page.locator('#learning-options .milo-continue').click();
-  await expect(page.locator('#learning-progress')).toContainText('Scene 2 of 7');
+  // Do not click the manual recovery control: the real Pip MP3 must advance itself.\n  await expect(page.locator('#learning-progress')).toContainText('Scene 2 of 7',{timeout:18000});
  }
 });
 test('AAC interruption does not advance story; mobile layout retains controls',async({browser})=>{
