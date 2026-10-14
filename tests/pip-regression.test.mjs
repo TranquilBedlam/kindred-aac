@@ -41,11 +41,11 @@ test('choice changes do not advance until audio ends',()=>{
 });
 test('browser entry uses recorded Pip story module not old robotic story',()=>{
  assert.match(html,/src\/main-pip-browser.js/);
- assert.match(js,/playMiloClip\(APPROVED_AUDIO.narration\[milo.step\]\)/);
- assert.match(js,/APPROVED_AUDIO.choices\[key\]/);
+ assert.match(readFileSync('src/maya/milo-controller.js','utf8'),/play\(audio.narration\[story.step\]\)/);
+ assert.match(readFileSync('src/maya/milo-controller.js','utf8'),/audio.choices\[key\]/);
  assert.match(js,/createPipAudioPlayer/);
  assert.match(readFileSync('src/aac/pip-audio-service.js','utf8'),/audio.onended=\(\)=>/);
- assert.match(js,/milo.next\(\);render\(\);narrateMilo\(\)/);
+ assert.match(readFileSync('src/maya/milo-controller.js','utf8'),/story.next\(\);render\(\);narrate\(\)/);
  assert.doesNotMatch(js,/new SpeechSynthesisUtterance\(words\)/);
  assert.match(js,/new SpeechSynthesisUtterance\(text\)/);
 });
@@ -53,5 +53,5 @@ test('independent communication and interrupt controls stay present',()=>{
  for(const id of ['talk','pad','vocab','pin','learning-replay','maya-portrait','milo-response'])assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(js,/miloCommunicationPaused=true/);
  assert.match(js,/stopMiloAudio\(\)/);
- assert.match(js,/key==='07-restart'/);
+ assert.match(readFileSync('src/maya/milo-controller.js','utf8'),/key==='07-restart'/);
 });
