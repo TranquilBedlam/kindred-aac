@@ -1,7 +1,7 @@
 name: Kindred AAC permanent regression gate
 on:
   push:
-    branches: [gh-pages, 'feat/**', 'fix/**', 'qa/**']
+    branches: [gh-pages, 'feat/**', 'fix/**', 'qa/**', 'refactor/**']
   pull_request:
     branches: [gh-pages]
   workflow_dispatch:
