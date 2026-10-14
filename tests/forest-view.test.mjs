@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {renderForestScene} from '../src/maya/forest-view.js';
+function fixture(){const ids=['forest-scene','forest-character','forest-object','forest-bird','forest-sky'];const els=Object.fromEntries(ids.map(id=>[id,{hidden:false,textContent:'',dataset:{},attrs:{},setAttribute(k,v){this.attrs[k]=v;}}]));return {els,get:id=>els[id]};}
+test('nonforest lesson hides forest without modifying its content',()=>{const f=fixture();f.els['forest-character'].textContent='keep';renderForestScene(f.get,{choice:'Milo',step:0,completed:false});assert.equal(f.els['forest-scene'].hidden,true);assert.equal(f.els['forest-character'].textContent,'keep');});
+test('first forest scene retains original visual and accessible label',()=>{const f=fixture();renderForestScene(f.get,{choice:'Bears',step:0,completed:false});assert.equal(f.els['forest-character'].textContent,'🐻');assert.equal(f.els['forest-object'].textContent,'❓');assert.equal(f.els['forest-scene'].attrs['aria-label'],'Pip searches for his lost scarf');});
+test('completed scene keeps the ending and accessibility details',()=>{const f=fixture();renderForestScene(f.get,{choice:'Bears',step:2,completed:true});assert.equal(f.els['forest-scene'].dataset.scene,'home');assert.equal(f.els['forest-sky'].textContent,'🌈');assert.equal(f.els['forest-scene'].attrs['aria-label'],'Pip is home with his blue scarf');});
