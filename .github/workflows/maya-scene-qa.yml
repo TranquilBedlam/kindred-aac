@@ -1,0 +1,16 @@
+name: Maya illustrated story QA
+on:
+  push:
+    branches:
+      - fix/maya-illustrated-story-qa
+  workflow_dispatch:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/maya-scene-qa.test.mjs
+      - run: node --check src/main-maya-choice-qa.js && node --check src/milo-approved-story.js
