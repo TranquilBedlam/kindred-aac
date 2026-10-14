@@ -2,6 +2,7 @@ import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {TalkingPortrait} from './maya/talking-portrait.js';
 import {MiloStory,MILO_SCENES} from './milo-story-maya-choice-qa.js';
 import {APPROVED_AUDIO} from './milo-approved-story.js';
+import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
@@ -118,22 +119,15 @@ const tellStory=()=>{
  $('learning-voice-status').textContent='Maya uses the approved recorded Pip voice for Milo. Choose Milo to hear her, or read other adventures silently.';
 };
 // Dedicated Pip recordings for the Milo experience. AAC speech uses the independent device voice.
-let miloAudio=null, miloAudioToken=0, miloResponding=false, miloCommunicationPaused=false;
-const stopMiloAudio=()=>{
- miloAudioToken++;
- if(miloAudio){miloAudio.onended=null;miloAudio.onerror=null;miloAudio.pause();miloAudio.removeAttribute('src');miloAudio=null;}
- mayaPortrait?.end();
-};
-const playMiloClip=(file,onEnd)=>{
- stopMiloAudio();
- const token=miloAudioToken;
- if(!file){$('learning-voice-status').textContent='Pip audio file is missing. The written story remains available.';return;}
- const a=new Audio(file);miloAudio=a;
- a.onplay=()=>{if(token!==miloAudioToken)return;if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is speaking.';};
- a.onended=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();miloAudio=null;if(!miloCommunicationPaused&&onEnd)onEnd();};
- a.onerror=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Pip MP3 unavailable. No replacement voice will be used.';miloAudio=null;};
- a.play().catch(()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Tap Hear Maya to enable audio, or continue with the picture choices.';});
-};
+let miloResponding=false, miloCommunicationPaused=false;
+const pipAudio=createPipAudioPlayer({
+ onStart:()=>{if(mayaEnabled)mayaPortrait?.begin();},
+ onStop:()=>mayaPortrait?.end(),
+ onStatus:message=>{$('learning-voice-status').textContent=message;},
+ canComplete:()=>!miloCommunicationPaused
+});
+const stopMiloAudio=()=>pipAudio.stop();
+const playMiloClip=(file,onEnd)=>pipAudio.play(file,onEnd);
 const narrateMilo=()=>{if(!miloCommunicationPaused)playMiloClip(APPROVED_AUDIO.narration[milo.step]);};
 const chooseMilo=(label)=>{
  if(miloResponding||miloCommunicationPaused||lesson.paused)return;

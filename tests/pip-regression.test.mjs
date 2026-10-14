@@ -43,7 +43,8 @@ test('browser entry uses recorded Pip story module not old robotic story',()=>{
  assert.match(html,/src\/main-pip-browser.js/);
  assert.match(js,/playMiloClip\(APPROVED_AUDIO.narration\[milo.step\]\)/);
  assert.match(js,/APPROVED_AUDIO.choices\[key\]/);
- assert.match(js,/a.onended=\(\)=>/);
+ assert.match(js,/createPipAudioPlayer/);
+ assert.match(readFileSync('src/aac/pip-audio-service.js','utf8'),/audio.onended=\(\)=>/);
  assert.match(js,/milo.next\(\);render\(\);narrateMilo\(\)/);
  assert.doesNotMatch(js,/new SpeechSynthesisUtterance\(words\)/);
  assert.match(js,/new SpeechSynthesisUtterance\(text\)/);
