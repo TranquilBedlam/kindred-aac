@@ -16,7 +16,7 @@ export function createMiloController({story,audio,play,stop,render,respond,disab
   const complete=()=>{
    if(isPaused()||isCommunicationPaused())return;
    responding=false;
-   if(story.step===6){story.finished=true;render();setStatus('The end.');}
+   if(story.step===audio.narration.length-1){story.finished=true;render();setStatus('The end.');}
    else {story.next();render();narrate();}
   };
   const file=audio.choices[key];
