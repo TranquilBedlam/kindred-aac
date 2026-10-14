@@ -1,5 +1,5 @@
 export function createMiloView({get:$,create,onChoose,onReplay,onSkip,onRecover}){
- return {render({scene,step,finished,lastResponse,boatItem,responding,communicationPaused}){
+ return {render({scene,step,totalScenes=7,finished,lastResponse,boatItem,responding,communicationPaused}){
  $('forest-scene').hidden=true;
  $('forest-caption').textContent=lastResponse;
  $('story-choices').hidden=true;$('learning-options').hidden=false;$('learning-back').hidden=false;
@@ -13,7 +13,7 @@ export function createMiloView({get:$,create,onChoose,onReplay,onSkip,onRecover}
  $('milo-prompt').hidden=finished;
  $('milo-prompt').textContent=scene.prompt;
  $('learning-heading').textContent=scene.title;
- $('learning-progress').textContent='Milo the Dragon and the Rainy-Day Surprise · Scene '+(step+1)+' of 7';
+ $('learning-progress').textContent='Milo the Dragon and the Rainy-Day Surprise · Scene '+(step+1)+' of '+totalScenes;
  $('milo-help').textContent='Maya will respond to your choice and continue to the next scene. Talk is always available.';
  $('learning-replay').textContent=finished?'Read story again':'🔊 Hear Maya';
  const host=$('learning-options');host.replaceChildren();
@@ -26,7 +26,7 @@ export function createMiloView({get:$,create,onChoose,onReplay,onSkip,onRecover}
   button.onclick=()=>onChoose(label);host.append(button);
  }
  // Accessibility escape hatch only; never required after making a choice.
- if(!responding&&step<6){
+ if(!responding&&step<totalScenes-1){
   const skip=create('button');skip.type='button';skip.className='learning-option milo-continue';skip.textContent='Continue without choosing →';
   skip.onclick=()=>onSkip();
   host.append(skip);

@@ -152,7 +152,7 @@ const miloView=createMiloView({
  onSkip:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();milo.next();render();narrateMilo();},
  onRecover:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();miloController.resetResponse();if(milo.step===6)milo.finished=true;else milo.next();render();if(!milo.finished)narrateMilo();}
 });
-const renderMilo=()=>miloView.render({scene:milo.scene,step:milo.step,finished:milo.finished,lastResponse:milo.lastResponse,boatItem:milo.boatItem,responding:miloController.responding,communicationPaused:miloCommunicationPaused});
+const renderMilo=()=>miloView.render({scene:milo.scene,step:milo.step,totalScenes:MILO_SCENES.length,finished:milo.finished,lastResponse:milo.lastResponse,boatItem:milo.boatItem,responding:miloController.responding,communicationPaused:miloCommunicationPaused});
 const renderLearning=()=>{
  document.querySelector('.shell')?.classList.toggle('maya-story-active',miloActive);
  $('milo-visual').hidden=!miloActive;
