@@ -17,3 +17,16 @@ test('story view renders exactly two accessible picture choices',()=>{
 });
 test('communication pause disables choices and response state shows recovery',()=>{const f=fixture();f.view.render({scene:f.scene,step:0,finished:false,lastResponse:'Result',responding:true,communicationPaused:true});assert.equal(f.el['learning-options'].children[0].disabled,true);assert.equal(f.el['learning-options'].children.at(-1).textContent,'Continue if audio is unavailable →');});
 test('final scene offers replay and preserves visible communication controls',()=>{const f=fixture();f.view.render({scene:f.scene,step:6,finished:true,lastResponse:'Goodbye',responding:false,communicationPaused:false});assert.equal(f.el['learning-options'].children.length,1);f.el['learning-options'].children[0].onclick();assert.deepEqual(f.events,[['replay']]);assert.equal(f.el['learning-back'].hidden,false);});
+test('KISS: view writes scene heading and progress only once without changing child-facing text',()=>{
+ const f=fixture();
+ for(const id of ['learning-heading','learning-progress']){
+  let writes=0,value='';
+  Object.defineProperty(f.el[id],'textContent',{get(){return value;},set(v){writes++;value=v;}});
+  f.el[id].writes=()=>writes;
+ }
+ f.view.render({scene:f.scene,step:2,finished:false,lastResponse:'',boatItem:'',responding:false,communicationPaused:false});
+ assert.equal(f.el['learning-heading'].textContent,'Rainy Picnic');
+ assert.equal(f.el['learning-progress'].textContent,'Milo the Dragon and the Rainy-Day Surprise · Scene 3 of 7');
+ assert.equal(f.el['learning-heading'].writes(),1);
+ assert.equal(f.el['learning-progress'].writes(),1);
+});
