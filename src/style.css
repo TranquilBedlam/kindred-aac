@@ -128,3 +128,6 @@ body{background:#eaf5f9}
 #home-return{margin-bottom:12px;min-height:48px}
 @media(max-width:650px){.kindred-home{padding:14px;min-height:0}.home-cards{gap:10px}.home-card{min-height:195px;padding:10px 5px;border-width:3px}.home-picture{font-size:3.6rem}.home-card strong{font-size:1.5rem}.home-card span:last-child{font-size:.86rem}.talk-controls{bottom:0}.talk-controls>div:first-child{display:none}.talk-controls #talk{min-width:0;width:100%}}
 @media(max-width:420px){.home-cards{grid-template-columns:1fr}.home-card{min-height:140px}.home-picture{font-size:2.8rem}.home-hero{gap:8px}}
+
+/* Caregiver editing never shares the screen with the child home. */
+.parent-active .kindred-home{display:none!important}
