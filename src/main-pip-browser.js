@@ -6,6 +6,7 @@ import {createMiloController} from './maya/milo-controller.js';
 import {createMiloView} from './maya/milo-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {createAacPreferenceStore} from './aac/preference-store.js';
+import {createVocabularyStore} from './aac/vocabulary-store.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
@@ -13,10 +14,9 @@ import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
 const $=id=>document.getElementById(id);
 const model=new CommunicationModel(),lesson=new LessonModel(),milo=new MiloStory();
 let miloActive=false;
-const storageKey='kindred-aac-vocabulary-v2';
-const legacyStorageKey='kindred-aac-custom-vocabulary-v1';
-try{const saved=localStorage.getItem(storageKey)||localStorage.getItem(legacyStorageKey);if(saved)model.importVocabulary(JSON.parse(saved));}catch(e){console.warn('Could not load custom vocabulary',e);}
-const saveVocabulary=()=>{try{localStorage.setItem(storageKey,JSON.stringify(model.exportVocabulary()));return true;}catch(e){$('edit-status').textContent='Could not save on this device. Check available storage.';return false;}};
+const vocabularyStore=createVocabularyStore(localStorage);
+try{const saved=vocabularyStore.read();if(saved)model.importVocabulary(saved);}catch(e){console.warn('Could not load custom vocabulary',e);}
+const saveVocabulary=()=>{if(vocabularyStore.write(model.exportVocabulary()))return true;$('edit-status').textContent='Could not save on this device. Check available storage.';return false;};
 
 // Speak from the same direct tap event. Do not cancel immediately before every
 // utterance: on some browsers that silences the first requested word.
