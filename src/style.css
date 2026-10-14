@@ -105,3 +105,76 @@
 .forest-scene[data-scene="1"] #forest-character{transform:translateX(24px)}.forest-scene[data-scene="2"] #forest-object{transform:translateY(-18px) rotate(-12deg)}.forest-scene[data-scene="home"] #forest-character{transform:translateX(25px) scale(1.08)}
 @media(prefers-reduced-motion:reduce){.forest-scene span{transition:none!important}}
 @media(max-width:640px){.forest-scene{height:135px}#forest-trees{font-size:37px}#forest-character{font-size:55px}#forest-object{font-size:30px}}
+
+/* Approved Concept 5 home, responsive without hiding communication */
+body{background:#eaf5f9}
+.shell{max-width:1280px}
+.top{background:#f5fbff;border-radius:22px;padding:14px 22px;margin-bottom:12px}
+.brand{color:#165cb6;font-size:clamp(1.5rem,3vw,2.4rem)}
+.top-actions #open-parent-settings{background:white;border:1px solid #b6d3e5;min-height:48px}
+.kindred-home{background:linear-gradient(180deg,#cdeeff 0%,#e7f8ff 65%,#e0f1d3 100%);padding:clamp(18px,3vw,38px);border-radius:30px;border:2px solid #c1e1e7;min-height:390px}
+.home-hero{display:flex;align-items:center;justify-content:center;gap:18px;color:#143f72;text-align:center}
+.home-hero h1{font-size:clamp(1.2rem,3vw,2rem)}
+.home-dragon{font-size:clamp(2.5rem,6vw,4.5rem)}
+.home-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,2.5vw,30px);max-width:1000px;margin:20px auto}
+.home-card{border:5px solid #f5bd29;border-radius:29px;min-height:clamp(210px,27vw,305px);padding:20px 12px;background:#fff9e9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#092c64;box-shadow:0 8px 0 #b3cbd354;font-weight:750}
+.home-card.home-games{border-color:#269bea;background:#f0faff}
+.home-picture{font-size:clamp(4rem,9vw,7rem);line-height:1.1}
+.home-card strong{font-size:clamp(1.75rem,4vw,3rem)}
+.home-card span:last-child{font-size:clamp(1rem,2vw,1.3rem)}
+.talk-controls{position:sticky;bottom:8px;z-index:20;background:#f6fff8;box-shadow:0 6px 24px #1d544329}
+.talk-controls #talk{background:#078b4b;border:3px solid #a2e1b0;min-width:min(45vw,420px);min-height:82px;border-radius:22px;font-size:clamp(1.7rem,3vw,2.4rem)}
+.talk-controls>div:first-child{flex:1}
+#home-return{margin-bottom:12px;min-height:48px}
+@media(max-width:650px){.kindred-home{padding:14px;min-height:0}.home-cards{gap:10px}.home-card{min-height:195px;padding:10px 5px;border-width:3px}.home-picture{font-size:3.6rem}.home-card strong{font-size:1.5rem}.home-card span:last-child{font-size:.86rem}.talk-controls{bottom:0}.talk-controls>div:first-child{display:none}.talk-controls #talk{min-width:0;width:100%}}
+@media(max-width:420px){.home-cards{grid-template-columns:1fr}.home-card{min-height:140px}.home-picture{font-size:2.8rem}.home-hero{gap:8px}}
+
+/* Caregiver editing never shares the screen with the child home. */
+.parent-active .kindred-home{display:none!important}
+
+/* Concept 5 illustration refinement: child home only; AAC and activity engine unchanged */
+.kindred-home{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(180deg,#c9eaff 0%,#edf9fc 61%,#dbefc9 100%);border-color:#b7d9d6}
+.kindred-home::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse 23% 15% at 16% 68%,#a7d3ae 97%,transparent 100%),radial-gradient(ellipse 32% 16% at 79% 70%,#b2d6ae 97%,transparent 100%),radial-gradient(ellipse 40% 22% at 42% 100%,#80c294 99%,transparent 100%),radial-gradient(ellipse 35% 22% at 100% 99%,#93cfa5 99%,transparent 100%);opacity:.68}
+.home-hero{position:relative;gap:12px;flex-wrap:wrap;padding:0 8px}
+.home-dragon{display:block;width:clamp(110px,16vw,205px);height:auto;flex:0 0 auto;filter:drop-shadow(0 8px 5px #4c87904a)}
+.home-hero h1{max-width:490px;font-size:clamp(1.5rem,3.2vw,2.55rem);line-height:1.2;color:#174c70}
+.home-card{position:relative;overflow:hidden;background:#fffbed;border-radius:30px;box-shadow:0 8px 0 #a5a77457,0 18px 23px #4d6b721c;transition:transform .12s ease,box-shadow .12s ease}
+.home-card.home-games{background:#f2faff}
+.home-card:hover{transform:translateY(-3px);box-shadow:0 11px 0 #a5a77457,0 18px 23px #4d6b721c}
+.home-card:focus-visible{outline:5px solid #0b527d;outline-offset:4px}
+.home-picture{display:block;object-fit:contain;width:min(72%,260px);height:clamp(110px,15vw,185px)}
+.home-card strong{letter-spacing:.01em}
+@media(max-width:650px){.home-dragon{width:110px}.home-picture{width:min(90%,170px);height:115px}.home-hero h1{font-size:1.5rem}.home-card{min-height:200px}}
+@media(max-width:420px){.home-dragon{width:90px}.home-hero h1{font-size:1.3rem}.home-picture{height:90px}.home-card{min-height:155px}.home-cards{margin:12px auto}}
+@media(prefers-reduced-motion:reduce){.home-card{transition:none}.home-card:hover{transform:none}}
+
+/* Dimensional Concept 5 polish: assets remain separate from functional controls */
+.kindred-home{background:linear-gradient(180deg,#81caff 0%,#bceaff 42%,#d0efdc 74%,#a4d88d 100%);box-shadow:inset 0 3px 15px #ffffffa6;min-height:525px}
+.kindred-home::after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;opacity:.8;background:radial-gradient(ellipse 9% 6% at 13% 17%,#ffffffdd 96%,transparent 100%),radial-gradient(ellipse 15% 8% at 29% 14%,#ffffffbb 96%,transparent 100%),radial-gradient(ellipse 12% 6% at 74% 19%,#ffffffc9 96%,transparent 100%),linear-gradient(166deg,transparent 48%,#8fb8cc30 48.3%,transparent 60%),linear-gradient(192deg,transparent 46%,#97b7d630 46.3%,transparent 62%)}
+.home-hero h1{text-shadow:0 2px 0 #ffffffa6}
+.home-card{border-width:6px;box-shadow:0 7px 0 #56839475,0 17px 25px #154c5936,inset 0 4px 9px #ffffffeb}
+.home-card.home-stories{background:linear-gradient(145deg,#fffef0,#fff6da)}
+.home-card.home-games{background:linear-gradient(145deg,#f9ffff,#dbf3ff)}
+.home-card strong{text-shadow:0 2px 0 #ffffffc4}
+.home-picture{filter:drop-shadow(0 8px 6px #55718739)}
+.home-dragon{filter:drop-shadow(0 9px 7px #195b6c55)}
+.talk-controls #talk{background:linear-gradient(180deg,#42cc74,#058c49);box-shadow:inset 0 4px 8px #ffffff60,0 5px 0 #147343;letter-spacing:.02em;text-shadow:0 2px 2px #064a4a57}
+@media(max-width:650px){.kindred-home{min-height:0}.home-card{border-width:4px}.talk-controls #talk{min-height:72px}}
+
+/* Approved Concept 5 artwork: illustration-backed scene, functional DOM remains real */
+.kindred-home{background:#b7e7f7 url("../assets/concept5-landscape.svg") center center/cover no-repeat;box-shadow:inset 0 0 0 2px #ffffff82,0 8px 18px #367b8940}
+.kindred-home::before,.kindred-home::after{display:none}
+.home-hero{background:transparent}
+.home-hero h1{color:#06316f;text-shadow:0 2px 1px #ffffffd9,0 0 14px #ffffff}
+.home-card{border-width:7px;border-radius:33px;box-shadow:0 9px 0 #23727d6b,0 14px 22px #123e5661,inset 0 5px 8px #fff}
+.home-card.home-stories{background:linear-gradient(150deg,#fffef4,#fff5d8)}
+.home-card.home-games{background:linear-gradient(150deg,#f6fcff,#d6f2ff)}
+.home-picture{width:min(80%,280px);height:clamp(115px,16vw,195px)}
+.home-dragon{width:clamp(145px,20vw,245px);filter:drop-shadow(0 12px 7px #13394c75)}
+.talk-controls{justify-content:center;background:transparent;box-shadow:none;padding:12px 2px}
+.talk-controls>div:first-child{display:none}
+.talk-controls .talk-actions{width:min(100%,1010px);display:flex;justify-content:center;align-items:center}
+.talk-controls #talk{width:min(100%,800px);min-width:0;min-height:100px;border-radius:34px;border:5px solid #88ec9f;background:linear-gradient(180deg,#43cf74 0%,#0aa45c 47%,#008442 100%);font-size:clamp(2rem,4vw,3.4rem);box-shadow:inset 0 5px 9px #ffffff8c,0 8px 0 #0a6b44,0 15px 22px #276f6952}
+.talk-controls #pin{min-width:88px}
+@media(max-width:650px){.home-dragon{width:120px}.home-picture{height:120px}.home-card{border-width:4px}.talk-controls #talk{min-height:78px;border-width:3px}.talk-controls .talk-actions{width:100%}}
+@media(max-width:420px){.home-dragon{width:100px}.home-picture{height:90px}.home-card{min-height:155px}}

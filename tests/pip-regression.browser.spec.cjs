@@ -7,6 +7,8 @@ const url='http://127.0.0.1:8766/';
 test('Maya main page loads, original audio assets return MP3, and AAC remains available',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);
+ await expect(page.locator('#kindred-home')).toBeVisible();
+ await page.locator('#home-stories').click();
  await expect(page.locator('#maya-portrait')).toBeVisible();
  const res=await page.request.get(url+'audio/scene-1.mp3');
  expect(res.ok()).toBeTruthy();expect((await res.body()).length).toBeGreaterThan(1500);
@@ -19,7 +21,7 @@ test('Maya main page loads, original audio assets return MP3, and AAC remains av
 });
 test('both scene-one choices play correct real Pip response and advance only after audio ends',async({page})=>{
  for(const [label,clip] of [['Open the door','01-open-door.mp3'],["Ask who's there",'01-ask-whos-there.mp3']]){
-  await page.goto(url);await page.locator('.story[data-choice="Milo"]').click();
+  await page.goto(url);await page.locator('#home-stories').click();await page.locator('.story[data-choice="Milo"]').click();
   await page.getByRole('button',{name:label,exact:true}).click();
   await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
   const state=await page.evaluate(()=>({src:[...document.querySelectorAll('audio')].map(a=>a.src)}));
@@ -32,6 +34,7 @@ test('both scene-one choices play correct real Pip response and advance only aft
 test('AAC interruption does not advance story; mobile layout retains controls',async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const page=await context.newPage();await page.goto(url);
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await page.getByRole('button',{name:'Open the door',exact:true}).click();
  await page.locator('#talk').click();

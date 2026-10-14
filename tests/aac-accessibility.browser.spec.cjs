@@ -5,6 +5,7 @@ test.beforeAll(async()=>{server=spawn('python3',['-m','http.server','8768','--bi
 test.afterAll(()=>server?.kill());
 test('communication stays usable during Milo and does not require spoken output',async({page})=>{
  await page.goto('http://127.0.0.1:8768/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
  await page.locator('#talk').click();
@@ -18,6 +19,7 @@ test('AAC remains reachable on a narrow touch device during learning',async({bro
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const page=await context.newPage();
  await page.goto('http://127.0.0.1:8768/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await page.locator('#talk').click();
  await expect(page.locator('#pad')).toBeVisible();
