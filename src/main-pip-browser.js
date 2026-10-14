@@ -5,6 +5,7 @@ import {APPROVED_AUDIO} from './milo-approved-story.js';
 import {createMiloController} from './maya/milo-controller.js';
 import {createMiloView} from './maya/milo-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
+import {createAacPreferenceStore} from './aac/preference-store.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
@@ -457,12 +458,11 @@ $('preview-voice').onclick=()=>{
  $('voice-settings-status').textContent='Previewing at pitch '+$('pitch').value+' and speed '+$('rate').value+'. If it sounds unchanged, try an on-device voice; some engines ignore these controls.';
  perform(()=>speaker('Hello! This is my voice. Let us explore together and see how I sound today.'));
 };
-const voiceStorageKey='kindred-aac-preferred-voice-v1';
+const aacPreferences=createAacPreferenceStore(localStorage);
 const refreshVoices=()=>{
  if(!('speechSynthesis' in window))return;
  const selection=$('voice'),previous=selection.value;
- let stored='';
- try{stored=localStorage.getItem(voiceStorageKey)||'';}catch{}
+ const stored=aacPreferences.readVoice();
  selection.replaceChildren(new Option('Device default',''));
  const voices=englishVoices(window.speechSynthesis.getVoices());
  for(const v of voices)selection.add(new Option(voiceLabel(v),v.voiceURI));
@@ -472,14 +472,14 @@ const refreshVoices=()=>{
  $('voice-hint').textContent=chosen?(chosen.localService?'Preferred on-device voice: ':'Voice may require internet: ')+chosen.name+'. Preview to confirm speech quality and availability.':'No English voice detected. Install an English device voice in system settings; AAC text remains visible.';
 };
 $('voice').addEventListener('change',()=>{
- try{localStorage.setItem(voiceStorageKey,$('voice').value);$('voice-settings-status').textContent='Voice preference saved on this device.';}catch{$('voice-settings-status').textContent='Could not save voice selection.';}
+ $('voice-settings-status').textContent=aacPreferences.saveVoice($('voice').value)?'Voice preference saved on this device.':'Could not save voice selection.';
 });
 
-const tuningKey='kindred-aac-voice-tuning-v1';
-try{const saved=JSON.parse(localStorage.getItem(tuningKey)||'null');if(saved){for(const id of ['pitch','rate']){const value=String(saved[id]??'');if([...$(id).options].some(o=>o.value===value))$(id).value=value;}}}catch{}
+const savedTuning=aacPreferences.readTuning();
+if(savedTuning){for(const id of ['pitch','rate']){const value=String(savedTuning[id]??'');if([...$(id).options].some(o=>o.value===value))$(id).value=value;}}
 for(const id of ['pitch','rate'])$(id).addEventListener('change',()=>{
- try{localStorage.setItem(tuningKey,JSON.stringify({pitch:$('pitch').value,rate:$('rate').value}));$('voice-settings-status').textContent='Preferences saved. Pitch '+$('pitch').value+', speed '+$('rate').value+'. Tap Preview to hear a new sample; your browser voice may ignore the adjustment.';}
- catch{$('voice-settings-status').textContent='Could not save voice preferences.';}
+ const saved=aacPreferences.saveTuning({pitch:$('pitch').value,rate:$('rate').value});
+ $('voice-settings-status').textContent=saved?'Preferences saved. Pitch '+$('pitch').value+', speed '+$('rate').value+'. Tap Preview to hear a new sample; your browser voice may ignore the adjustment.':'Could not save voice preferences.';
 });
 refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshVoices);
 $('undo').onclick=()=>{controller.undo();render();};
