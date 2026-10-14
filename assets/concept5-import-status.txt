@@ -1,1 +1,0 @@
-One-time import trigger for approved 3D landscape asset. Delete after asset has been committed.
