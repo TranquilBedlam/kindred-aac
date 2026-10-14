@@ -1,0 +1,24 @@
+name: Concept 5 responsive and AAC smoke
+on:
+  pull_request:
+    branches: [gh-pages]
+  workflow_dispatch:
+jobs:
+  concept-5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runner
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+      - name: Structural regression suite
+        run: node --test tests/home-concept-5.test.mjs
+      - name: Chromium tablet desktop and small-width smoke
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 &
+          sleep 2
+          node tests/home-concept-5.browser.mjs
