@@ -1,0 +1,16 @@
+name: Maya choice gateway QA
+on:
+  push:
+    branches:
+      - fix/maya-choice-gateway-qa
+  workflow_dispatch:
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/maya-choice-gateway.test.mjs
+      - run: node --check src/main.js && node --check src/milo-story.js && node --check src/milo-approved-story.js
