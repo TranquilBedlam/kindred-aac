@@ -3,6 +3,7 @@ test.beforeAll(async()=>{server=spawn('python3',['-m','http.server','8765','--bi
 test('narrated story advances through scenes and can replay',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Bears"]').click();
  await expect(page.locator('#learning-progress')).toHaveText('Page 1 of 3');
  await page.getByRole('button',{name:'Look under leaves',exact:true}).click();
@@ -20,6 +21,7 @@ test('narrated story advances through scenes and can replay',async({page})=>{
 });
 test('AAC is available during story, Maya can be hidden',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Space"]').click();
  await page.locator('.maya-preferences summary').click();
  await page.locator('#maya-toggle').click();
@@ -34,6 +36,7 @@ test('AAC is available during story, Maya can be hidden',async({page})=>{
 
 test('Maya original image layers load, can be hidden and do not block AAC',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Bears"]').click();
  const stage=page.locator('#maya-portrait .tp-stage');
  await expect(stage).toBeVisible();
@@ -50,6 +53,7 @@ test('Maya original image layers load, can be hidden and do not block AAC',async
 test('Maya American voice selection and preview never change AAC voice',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Bears"]').click();
  await page.locator('.maya-preferences summary').click();
  await expect(page.locator('#maya-voice')).toBeVisible();
@@ -67,6 +71,7 @@ test('Maya remains visible on the left as adventure choices change on phone',asy
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  const maya=page.locator('#maya-portrait');
  await expect(maya).toBeVisible();
  await expect(page.locator('#story-choices')).toBeVisible();
@@ -88,6 +93,7 @@ test('Maya remains visible on the left as adventure choices change on phone',asy
 
 test('Forest story follows choice consequences without scripted confirmations',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Bears"]').click();
  await expect(page.locator('#learning-narration')).toContainText('lost his blue scarf');
  await page.getByRole('button',{name:'Follow the footprints'}).click();
@@ -102,6 +108,7 @@ test('Forest story follows choice consequences without scripted confirmations',a
 test('Forest illustration updates and AAC remains independent',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await expect(page.locator('#forest-scene')).toBeHidden();
  await page.locator('.story[data-choice="Bears"]').click();
  await expect(page.locator('#forest-scene')).toBeVisible();
@@ -126,6 +133,7 @@ test('Forest illustration updates and AAC remains independent',async({page})=>{
 test('Milo story gives optional AAC participation and controllable boat',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
  await page.getByRole('button',{name:'Oh no!',exact:true}).click();
@@ -160,6 +168,7 @@ test('Milo story gives optional AAC participation and controllable boat',async({
 
 test('Milo opening clearly explains interaction and allows no-response continuation',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await expect(page.locator('#milo-prompt')).toBeVisible();
  await expect(page.locator('#milo-prompt')).toContainText('Tap a picture');
@@ -177,6 +186,7 @@ test('Milo opening clearly explains interaction and allows no-response continuat
 
 test('welcome and Maya preview name all three available stories',async({page})=>{
  await page.goto('http://127.0.0.1:8765/');
+ await page.locator('#home-stories').click();
  await expect(page.locator('#learning-narration')).toContainText('Milo the dragon');
  await expect(page.locator('.story[data-choice="Milo"]')).toBeVisible();
  await expect(page.locator('.story[data-choice="Bears"]')).toBeVisible();
