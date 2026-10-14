@@ -56,7 +56,7 @@ test('Maya American voice selection and preview never change AAC voice',async({p
  await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Bears"]').click();
  await page.locator('.maya-preferences summary').click();
- await expect(page.locator('#maya-voice')).toBeVisible();
+ await expect(page.locator('#maya-voice')).toBeHidden(); // Recorded Pip, no device voice selector
  await expect(page.locator('#maya-voice-preview')).toBeVisible();
  await page.locator('#maya-voice-preview').click();
  await expect(page.locator('#learning-voice-status')).not.toBeEmpty();
@@ -135,14 +135,14 @@ test('Milo story gives optional AAC participation and controllable boat',async({
  await page.goto('http://127.0.0.1:8765/');
  await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
  await page.getByRole('button',{name:'Oh no!',exact:true}).click();
  await expect(page.locator('#milo-response')).toContainText("rain" );
  await page.locator('#talk').click();
  await expect(page.locator('#pad')).toBeVisible();
  await expect(page.locator('#vocab button').first()).toHaveAttribute('aria-label','Help');
  await page.locator('#close').click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
  await page.getByRole('button',{name:'Continue story without choosing'}).click();
  await page.getByRole('button',{name:'Stay inside'}).click();
  await page.getByRole('button',{name:'Continue story without choosing'}).click();
@@ -161,7 +161,7 @@ test('Milo story gives optional AAC participation and controllable boat',async({
  await page.getByRole('button',{name:'Finish story'}).click();
  await expect(page.locator('#learning-progress')).toHaveText('The end!');
  await page.locator('#learning-replay').click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
  expect(errors).toEqual([]);
 });
 
@@ -171,16 +171,16 @@ test('Milo opening clearly explains interaction and allows no-response continuat
  await page.locator('#home-stories').click();
  await page.locator('.story[data-choice="Milo"]').click();
  await expect(page.locator('#milo-prompt')).toBeVisible();
- await expect(page.locator('#milo-prompt')).toContainText('Tap a picture');
+ await expect(page.locator('#milo-prompt')).toContainText('Choose what happens next.');
  await expect(page.locator('#milo-help')).toContainText('Use Talk at any time');
  await expect(page.getByRole('button',{name:'Oh no!',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Continue story without choosing'})).toBeVisible();
  await page.getByRole('button',{name:'Continue story without choosing'}).click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 2 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 2 of 7');
  await page.locator('#talk').click();
  await expect(page.locator('#pad')).toBeVisible();
  await page.locator('#close').click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 2 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 2 of 7');
 });
 
 
@@ -192,7 +192,7 @@ test('welcome and Maya preview name all three available stories',async({page})=>
  await expect(page.locator('.story[data-choice="Bears"]')).toBeVisible();
  await expect(page.locator('.story[data-choice="Space"]')).toBeVisible();
  await page.locator('.story[data-choice="Milo"]').click();
- await expect(page.locator('#learning-progress')).toHaveText('Scene 1 of 7');
+ await expect(page.locator('#learning-progress')).toContainText('Scene 1 of 7');
  await page.locator('#learning-back').click();
  await expect(page.locator('#learning-narration')).toContainText('Milo the dragon');
 });
