@@ -147,3 +147,16 @@ body{background:#eaf5f9}
 @media(max-width:650px){.home-dragon{width:110px}.home-picture{width:min(90%,170px);height:115px}.home-hero h1{font-size:1.5rem}.home-card{min-height:200px}}
 @media(max-width:420px){.home-dragon{width:90px}.home-hero h1{font-size:1.3rem}.home-picture{height:90px}.home-card{min-height:155px}.home-cards{margin:12px auto}}
 @media(prefers-reduced-motion:reduce){.home-card{transition:none}.home-card:hover{transform:none}}
+
+/* Dimensional Concept 5 polish: assets remain separate from functional controls */
+.kindred-home{background:linear-gradient(180deg,#81caff 0%,#bceaff 42%,#d0efdc 74%,#a4d88d 100%);box-shadow:inset 0 3px 15px #ffffffa6;min-height:525px}
+.kindred-home::after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;opacity:.8;background:radial-gradient(ellipse 9% 6% at 13% 17%,#ffffffdd 96%,transparent 100%),radial-gradient(ellipse 15% 8% at 29% 14%,#ffffffbb 96%,transparent 100%),radial-gradient(ellipse 12% 6% at 74% 19%,#ffffffc9 96%,transparent 100%),linear-gradient(166deg,transparent 48%,#8fb8cc30 48.3%,transparent 60%),linear-gradient(192deg,transparent 46%,#97b7d630 46.3%,transparent 62%)}
+.home-hero h1{text-shadow:0 2px 0 #ffffffa6}
+.home-card{border-width:6px;box-shadow:0 7px 0 #56839475,0 17px 25px #154c5936,inset 0 4px 9px #ffffffeb}
+.home-card.home-stories{background:linear-gradient(145deg,#fffef0,#fff6da)}
+.home-card.home-games{background:linear-gradient(145deg,#f9ffff,#dbf3ff)}
+.home-card strong{text-shadow:0 2px 0 #ffffffc4}
+.home-picture{filter:drop-shadow(0 8px 6px #55718739)}
+.home-dragon{filter:drop-shadow(0 9px 7px #195b6c55)}
+.talk-controls #talk{background:linear-gradient(180deg,#42cc74,#058c49);box-shadow:inset 0 4px 8px #ffffff60,0 5px 0 #147343;letter-spacing:.02em;text-shadow:0 2px 2px #064a4a57}
+@media(max-width:650px){.kindred-home{min-height:0}.home-card{border-width:4px}.talk-controls #talk{min-height:72px}}
