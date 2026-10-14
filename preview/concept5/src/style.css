@@ -160,3 +160,21 @@ body{background:#eaf5f9}
 .home-dragon{filter:drop-shadow(0 9px 7px #195b6c55)}
 .talk-controls #talk{background:linear-gradient(180deg,#42cc74,#058c49);box-shadow:inset 0 4px 8px #ffffff60,0 5px 0 #147343;letter-spacing:.02em;text-shadow:0 2px 2px #064a4a57}
 @media(max-width:650px){.kindred-home{min-height:0}.home-card{border-width:4px}.talk-controls #talk{min-height:72px}}
+
+/* Approved Concept 5 artwork: illustration-backed scene, functional DOM remains real */
+.kindred-home{background:#b7e7f7 url("../assets/concept5-landscape.svg") center center/cover no-repeat;box-shadow:inset 0 0 0 2px #ffffff82,0 8px 18px #367b8940}
+.kindred-home::before,.kindred-home::after{display:none}
+.home-hero{background:transparent}
+.home-hero h1{color:#06316f;text-shadow:0 2px 1px #ffffffd9,0 0 14px #ffffff}
+.home-card{border-width:7px;border-radius:33px;box-shadow:0 9px 0 #23727d6b,0 14px 22px #123e5661,inset 0 5px 8px #fff}
+.home-card.home-stories{background:linear-gradient(150deg,#fffef4,#fff5d8)}
+.home-card.home-games{background:linear-gradient(150deg,#f6fcff,#d6f2ff)}
+.home-picture{width:min(80%,280px);height:clamp(115px,16vw,195px)}
+.home-dragon{width:clamp(145px,20vw,245px);filter:drop-shadow(0 12px 7px #13394c75)}
+.talk-controls{justify-content:center;background:transparent;box-shadow:none;padding:12px 2px}
+.talk-controls>div:first-child{display:none}
+.talk-controls .talk-actions{width:min(100%,1010px);display:flex;justify-content:center;align-items:center}
+.talk-controls #talk{width:min(100%,800px);min-width:0;min-height:100px;border-radius:34px;border:5px solid #88ec9f;background:linear-gradient(180deg,#43cf74 0%,#0aa45c 47%,#008442 100%);font-size:clamp(2rem,4vw,3.4rem);box-shadow:inset 0 5px 9px #ffffff8c,0 8px 0 #0a6b44,0 15px 22px #276f6952}
+.talk-controls #pin{min-width:88px}
+@media(max-width:650px){.home-dragon{width:120px}.home-picture{height:120px}.home-card{border-width:4px}.talk-controls #talk{min-height:78px;border-width:3px}.talk-controls .talk-actions{width:100%}}
+@media(max-width:420px){.home-dragon{width:100px}.home-picture{height:90px}.home-card{min-height:155px}}
