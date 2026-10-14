@@ -1,0 +1,58 @@
+name: Unpack approved Maya Pip recordings
+on:
+  push:
+    branches: [gh-pages]
+    paths:
+      - 'qa/uploads/*.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          persist-credentials: true
+      - name: Validate and install approved Runway audio
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile, re
+          uploads=sorted(Path('qa/uploads').glob('*.zip'))
+          if not uploads: raise SystemExit('No uploaded Runway ZIP found in qa/uploads/')
+          archive=uploads[-1]
+          mapping={}
+          with zipfile.ZipFile(archive) as z:
+              for info in z.infolist():
+                  n=Path(info.filename).name
+                  m=re.fullmatch(r'Kindred AAC Approved Milo Draft 4 Scene ([1-7]) Narration and Question\.mp3',n)
+                  choice=re.fullmatch(r'Kindred AAC Approved Milo Choice (0[1-7]-[a-z-]+)\.mp3',n)
+                  if m: target=f'scene-{m.group(1)}.mp3'
+                  elif choice: target=f'{choice.group(1)}.mp3'
+                  else: raise SystemExit(f'Unexpected file: {n}')
+                  if target in mapping:raise SystemExit('Duplicate '+target)
+                  blob=z.read(info)
+                  if len(blob)<1500 or not (blob.startswith(b'ID3') or blob[:2] in (b'\\xff\\xfb',b'\\xff\\xf3',b'\\xff\\xf2')):
+                      raise SystemExit('Invalid MP3: '+n)
+                  mapping[target]=blob
+          required={*(f'scene-{n}.mp3' for n in range(1,8)), '01-open-door.mp3','01-ask-whos-there.mp3','02-basket.mp3','02-blanket.mp3','03-leaf.mp3','03-stick.mp3','04-flower.mp3','04-leaf.mp3','05-blow.mp3','05-push.mp3','06-sandwiches.mp3','06-apple.mp3','07-goodbye.mp3'}
+          if set(mapping)!=required:raise SystemExit(f'Wrong clip set: missing={required-set(mapping)}, extra={set(mapping)-required}')
+          Path('audio').mkdir(exist_ok=True)
+          for name,blob in mapping.items(): (Path('audio')/name).write_bytes(blob)
+          print('Verified and extracted',len(mapping),'original Pip recordings')
+          PY
+      - name: Publish MP3s to GitHub Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audio/*.mp3
+          if ! git diff --cached --quiet; then
+            git commit -m 'qa: publish twenty approved original Pip audio files'
+            git push origin HEAD:gh-pages
+          fi
