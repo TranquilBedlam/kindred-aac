@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const html=readFileSync('maya-choice-gateway-qa.html','utf8');
+const js=readFileSync('src/main-maya-choice-qa.js','utf8');
+const css=readFileSync('src/maya-story-qa.css','utf8');
+assert.match(html,/src\/maya-story-qa.css/);
+assert.match(html,/id="maya-portrait"/);
+assert.match(html,/id="talk"/);
+assert.match(js,/classList.toggle\('maya-story-active',miloActive\)/);
+assert.match(js,/chooseMilo\(label\)/);
+assert.match(js,/playMiloClip\(file,complete\)/);
+assert.match(js,/milo\.next\(\);render\(\);narrateMilo\(\)/);
+assert.match(js,/miloCommunicationPaused=true/);
+assert.match(css,/#learning-options \.learning-option:not\(\.milo-continue\)/);
+assert.match(css,/@media\(max-width:680px\)/);
+console.log('PASS 10 Maya story QA source assertions');
