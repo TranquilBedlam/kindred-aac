@@ -1,5 +1,7 @@
+import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { strict as assert } from 'node:assert';
+mkdirSync('concept-5-screenshots',{recursive:true});
 const browser=await chromium.launch({headless:true});
 try{
  for(const width of [390,768,1024,1440]){
@@ -7,6 +9,7 @@ try{
   const page=await context.newPage();
   await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
   assert.equal(await page.locator('#kindred-home').isVisible(),true,'home visible '+width);
+  await page.screenshot({path:`concept-5-screenshots/home-${width}.png`,fullPage:true});
   assert.equal(await page.locator('#talk').isVisible(),true,'Talk visible '+width);
   await page.locator('#talk').click();
   assert.equal(await page.locator('#pad').isVisible(),true,'AAC opens '+width);
