@@ -104,7 +104,7 @@ const refreshMayaVoices=()=>{
  for(const v of voices)el.add(new Option(v.name+(v.localService?' (on-device)':''),v.voiceURI));
  let stored='';try{stored=localStorage.getItem(mayaVoiceKey)||'';}catch{}
  el.value=voices.some(v=>v.voiceURI===stored)?stored:'';
- $('maya-voice-note').textContent=selected?'Using: '+selected.name+'. Naturalness depends on your device.':'No American English voice detected yet. Voice options may load after you tap Preview.';
+ $('maya-voice-note').textContent='Maya’s Milo story uses approved Pip MP3 recordings. This does not change the child’s independent AAC voice.';
 };
 $('maya-voice').onchange=()=>{
  try{localStorage.setItem(mayaVoiceKey,$('maya-voice').value);}catch{}
@@ -113,31 +113,9 @@ $('maya-voice').onchange=()=>{
 $('maya-voice-preview').onclick=()=>{if(miloActive){narrateMilo();}else{playMiloClip(APPROVED_AUDIO.narration[0]);}};
 refreshMayaVoices();
 if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshMayaVoices);
-const tellStory=(words)=>{
- if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
-  $('learning-voice-status').textContent='Voice is unavailable here. Follow the written story or try a browser with speech.';
-  return;
- }
- try{
-  const engine=window.speechSynthesis;
-  // Avoid cancelling an idle speech engine before first narration: that
-  // can silence initial speech on some mobile browsers.
-  if(engine.speaking)engine.cancel();
-  mayaPortrait?.end();
-  const utterance=new SpeechSynthesisUtterance(words);
-  utterance.lang='en-US';
-  utterance.rate=.88;
-  const preferred=selectMayaVoice();
-  if(preferred)utterance.voice=preferred;
-  utterance.pitch=1.04;
-  utterance.onstart=()=>{if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is telling the story.';};
-  utterance.onboundary=event=>{if(mayaEnabled&&event.name==='word')mayaPortrait?.word(words.slice(event.charIndex,event.charIndex+(event.charLength||12)));};
-  utterance.onend=()=>{mayaPortrait?.end();$('learning-voice-status').textContent='Story narration finished.';};
-  utterance.onerror=e=>{mayaPortrait?.end();$('learning-voice-status').textContent='Audio unavailable ('+(e.error||'unknown')+'). The story remains readable.';};
-  engine.speak(utterance);
-  if(engine.paused)engine.resume();
-  $('learning-voice-status').textContent='Starting narration…';
- }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
+// Never synthesize Maya's speech using the browser robot voice. AAC remains independent.
+const tellStory=()=>{
+ $('learning-voice-status').textContent='Maya uses the approved recorded Pip voice for Milo. Choose Milo to hear her, or read other adventures silently.';
 };
 // Dedicated Pip recordings for the Milo experience. AAC speech uses the independent device voice.
 let miloAudio=null, miloAudioToken=0, miloResponding=false, miloCommunicationPaused=false;
