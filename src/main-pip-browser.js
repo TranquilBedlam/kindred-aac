@@ -7,6 +7,7 @@ import {createMiloView} from './maya/milo-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {createAacPreferenceStore} from './aac/preference-store.js';
 import {createVocabularyStore} from './aac/vocabulary-store.js';
+import {createAacSpeechService} from './aac/speech-service.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
@@ -18,24 +19,15 @@ const vocabularyStore=createVocabularyStore(localStorage);
 try{const saved=vocabularyStore.read();if(saved)model.importVocabulary(saved);}catch(e){console.warn('Could not load custom vocabulary',e);}
 const saveVocabulary=()=>{if(vocabularyStore.write(model.exportVocabulary()))return true;$('edit-status').textContent='Could not save on this device. Check available storage.';return false;};
 
-// Speak from the same direct tap event. Do not cancel immediately before every
-// utterance: on some browsers that silences the first requested word.
-const speaker=text=>{
-  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window))
-    throw new Error('This browser cannot speak. Try Chrome, Edge, or Safari with a voice installed.');
-  const engine=window.speechSynthesis;
-  const msg=new SpeechSynthesisUtterance(text);
-  msg.lang='en-US'; msg.rate=Number($('rate').value)||1; msg.pitch=Number($('pitch').value)||1;
-  const voices=engine.getVoices();
-  const chosen=chooseVoice(voices,$('voice').value);
-  if(chosen)msg.voice=chosen;
-  engine.speak(msg);
-  if(engine.paused)engine.resume();
-  $('speech-status').textContent='Speaking: '+text;
-  msg.onerror=event=>{$('speech-status').textContent='Audio did not play ('+(event.error||'unknown error')+'). Check your browser voice and sound settings.';};
-  msg.onend=()=>{$('speech-status').textContent='Spoken: '+text;};
-  return Promise.resolve(true);
-};
+// AAC uses device TTS, independently of Maya's recorded Pip narration.
+// Call from the original tap event to preserve mobile speech behavior.
+const speaker=createAacSpeechService({
+ engine:window.speechSynthesis,
+ Utterance:window.SpeechSynthesisUtterance,
+ getSettings:()=>({rate:$('rate').value,pitch:$('pitch').value,voiceURI:$('voice').value}),
+ chooseVoice,
+ onStatus:message=>{$('speech-status').textContent=message;}
+});
 // Small local images avoid network dependency and reduce storage pressure.
 async function compressPhoto(file){
  if(!file)return null;

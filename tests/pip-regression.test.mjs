@@ -47,7 +47,8 @@ test('browser entry uses recorded Pip story module not old robotic story',()=>{
  assert.match(readFileSync('src/aac/pip-audio-service.js','utf8'),/audio.onended=\(\)=>/);
  assert.match(readFileSync('src/maya/milo-controller.js','utf8'),/story.next\(\);render\(\);narrate\(\)/);
  assert.doesNotMatch(js,/new SpeechSynthesisUtterance\(words\)/);
- assert.match(js,/new SpeechSynthesisUtterance\(text\)/);
+ assert.match(js,/createAacSpeechService/);
+ assert.match(readFileSync('src/aac/speech-service.js','utf8'),/new Utterance\(text\)/);
 });
 test('independent communication and interrupt controls stay present',()=>{
  for(const id of ['talk','pad','vocab','pin','learning-replay','maya-portrait','milo-response'])assert.ok(html.includes('id="'+id+'"'),id);
