@@ -1,0 +1,492 @@
+import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
+import {TalkingPortrait} from './maya/talking-portrait.js';
+import {MiloStory,MILO_SCENES} from './milo-story-maya-choice-qa.js';
+import {APPROVED_AUDIO} from './milo-approved-story.js';
+import {createMiloController} from './maya/milo-controller.js';
+import {createMiloView} from './maya/milo-view.js';
+import {renderForestScene} from './maya/forest-view.js';
+import {renderLearningChoices} from './maya/learning-choice-view.js';
+import {createPipAudioPlayer} from './aac/pip-audio-service.js';
+import {createAacPreferenceStore} from './aac/preference-store.js';
+import {createVocabularyStore} from './aac/vocabulary-store.js';
+import {createAacSpeechService} from './aac/speech-service.js';
+import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
+import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
+import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
+import {ICON_CATEGORIES,getIcons} from './iconCatalog.js';
+const $=id=>document.getElementById(id);
+const model=new CommunicationModel(),lesson=new LessonModel(),milo=new MiloStory();
+let miloActive=false;
+const vocabularyStore=createVocabularyStore(localStorage);
+try{const saved=vocabularyStore.read();if(saved)model.importVocabulary(saved);}catch(e){console.warn('Could not load custom vocabulary',e);}
+const saveVocabulary=()=>{if(vocabularyStore.write(model.exportVocabulary()))return true;$('edit-status').textContent='Could not save on this device. Check available storage.';return false;};
+
+// AAC uses device TTS, independently of Maya's recorded Pip narration.
+// Call from the original tap event to preserve mobile speech behavior.
+const speaker=createAacSpeechService({
+ engine:window.speechSynthesis,
+ Utterance:window.SpeechSynthesisUtterance,
+ getSettings:()=>({rate:$('rate').value,pitch:$('pitch').value,voiceURI:$('voice').value}),
+ chooseVoice,
+ onStatus:message=>{$('speech-status').textContent=message;}
+});
+// Small local images avoid network dependency and reduce storage pressure.
+async function compressPhoto(file){
+ if(!file)return null;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG, or WebP photo.');
+ if(file.size>8*1024*1024)throw Error('Photo too large (8 MB maximum input).');
+ const url=URL.createObjectURL(file);
+ try{
+   const bitmap=await createImageBitmap(file);
+   try{
+     const max=220,ratio=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
+     const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*ratio));canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
+     canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
+     let data=canvas.toDataURL('image/jpeg',0.72);
+     if(data.length>140000)throw Error('Photo still too large after resizing. Choose a simpler image.');
+     return data;
+   }finally{bitmap.close?.();}
+ }finally{URL.revokeObjectURL(url);}
+}
+function visualFor(word){
+ if(word.photo){const image=document.createElement('img');image.className='word-photo';image.alt='';image.src=word.photo;image.setAttribute('aria-hidden','true');return image;}
+ const icon=document.createElement('span');icon.className='emoji';icon.setAttribute('aria-hidden','true');icon.textContent=word.emoji;return icon;
+}
+const controller=new PadController(model,lesson,speaker);
+
+let mayaPortrait=null;
+let mayaEnabled=true;
+TalkingPortrait.create($('maya-portrait'),'src/maya/characters/maya').then(p=>{
+ mayaPortrait=p;
+ if(!mayaEnabled)p.host.hidden=true;
+}).catch(()=>{
+ $('maya-portrait').setAttribute('aria-label','Maya artwork is not installed; story choices remain available.');
+});
+$('maya-toggle').onclick=()=>{
+ mayaEnabled=!mayaEnabled;
+ $('maya-toggle').setAttribute('aria-pressed',String(mayaEnabled));
+ $('maya-toggle').textContent=mayaEnabled?'Maya on':'Maya off';
+ $('maya-portrait').hidden=!mayaEnabled;
+ if(!mayaEnabled)mayaPortrait?.end();
+};
+// Story grammar: character, small problem, meaningful choices, resolution.
+const storyScenes={
+ Bears:[
+  {line:'Pip the bear has lost his blue scarf. Cold wind whispers through the forest. Where could it be?',choices:[['Look under leaves','🍂'],['Follow the footprints','🐾']],responses:{'Look under leaves':'Pip lifts the golden leaves. A little feather is hiding beneath them!','Follow the footprints':'Pip follows tiny footprints. They lead toward the tallest tree.'}},
+  {line:'A friendly bird flutters above a low branch. Something blue waves in the breeze. How can Pip get closer?',choices:[['Ask the bird','🐦'],['Reach for the branch','🌿']],responses:{'Ask the bird':'The bird chirps and gently nudges the blue scarf down to Pip.','Reach for the branch':'Pip stretches up, up, up, and the soft blue scarf slips into his paws!'}},
+  {line:'Pip has his scarf again. He feels warm and safe. How should we finish the adventure?',choices:[['Thank the bird','💛'],['Head home','🏡']],responses:{'Thank the bird':'Pip waves his scarf to say thank you. The bird sings a happy little song.','Head home':'Pip follows the cozy path home. He snuggles up as the sun goes down.'}}
+ ],
+ Space:[
+  {line:'Nova the little astronaut is ready to visit the moon, but her rocket needs a destination. Where shall she go?',choices:[['Rocket','🚀'],['Moon','🌙']],responses:{Rocket:'Nova checks every button. The engines begin to hum!',Moon:'Nova points to the bright moon. That is the perfect place to explore!'}},
+  {line:'Whoosh! Nova flies among the stars. A sparkling trail leads ahead. What should she explore?',choices:[['Moon','🌙'],['Rocket','🚀']],responses:{Moon:'The moon shines brighter and brighter as Nova gets closer.',Rocket:'Nova watches the rocket windows glow with tiny stars.'}},
+  {line:'Nova lands safely and sees Earth shining far away. What should she visit before heading home?',choices:[['Rocket','🚀'],['Moon','🌙']],responses:{Rocket:'Nova climbs aboard for a gentle trip home. What an adventure!',Moon:'Nova makes one little moon-hop before heading home. What an adventure!'}}
+ ]
+};
+const mayaVoiceKey='kindred-maya-voice-v1';
+const mayaVoices=()=>('speechSynthesis' in window?window.speechSynthesis.getVoices():[]).filter(v=>/^en-US$/i.test(v.lang));
+const rankMayaVoice=v=>{
+ const name=v.name.toLowerCase();
+ const girl=/\b(samantha|ava|allison|jenny|aria|zira|susan|karen|victoria|serena|joanna|salli|kimberly|ivy|female)\b/i.test(name);
+ const natural=/enhanced|premium|natural|neural|high quality/i.test(name);
+ return (girl?100:0)+(natural?35:0)+(v.localService?15:0);
+};
+const selectMayaVoice=()=>{
+ const voices=mayaVoices();
+ let stored='';try{stored=localStorage.getItem(mayaVoiceKey)||'';}catch{}
+ return voices.find(v=>v.voiceURI===stored)||[...voices].sort((a,b)=>rankMayaVoice(b)-rankMayaVoice(a))[0]||null;
+};
+const refreshMayaVoices=()=>{
+ const el=$('maya-voice');if(!el)return;
+ const voices=mayaVoices(),selected=selectMayaVoice();
+ el.replaceChildren(new Option('Automatic American English', ''));
+ for(const v of voices)el.add(new Option(v.name+(v.localService?' (on-device)':''),v.voiceURI));
+ let stored='';try{stored=localStorage.getItem(mayaVoiceKey)||'';}catch{}
+ el.value=voices.some(v=>v.voiceURI===stored)?stored:'';
+ $('maya-voice-note').textContent='Maya’s Milo story uses approved Pip MP3 recordings. This does not change the child’s independent AAC voice.';
+};
+$('maya-voice').onchange=()=>{
+ try{localStorage.setItem(mayaVoiceKey,$('maya-voice').value);}catch{}
+ refreshMayaVoices();
+};
+$('maya-voice-preview').onclick=()=>{if(miloActive){narrateMilo();}else{playMiloClip(APPROVED_AUDIO.narration[0]);}};
+refreshMayaVoices();
+if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshMayaVoices);
+// Never synthesize Maya's speech using the browser robot voice. AAC remains independent.
+const tellStory=()=>{
+ $('learning-voice-status').textContent='Maya uses the approved recorded Pip voice for Milo. Choose Milo to hear her, or read other adventures silently.';
+};
+// Dedicated Pip recordings for the Milo experience. AAC speech uses the independent device voice.
+let miloCommunicationPaused=false;
+const pipAudio=createPipAudioPlayer({
+ onStart:()=>{if(mayaEnabled)mayaPortrait?.begin();},
+ onStop:()=>mayaPortrait?.end(),
+ onStatus:message=>{$('learning-voice-status').textContent=message;},
+ canComplete:()=>!miloCommunicationPaused
+});
+const stopMiloAudio=()=>pipAudio.stop();
+const playMiloClip=(file,onEnd)=>pipAudio.play(file,onEnd);
+const miloController=createMiloController({
+ story:milo,audio:APPROVED_AUDIO,play:playMiloClip,stop:stopMiloAudio,
+ render:()=>render(),
+ respond:text=>{$('milo-response').hidden=false;$('milo-response').textContent=text;},
+ disableChoices:()=>$('learning-options').querySelectorAll('button').forEach(b=>b.disabled=true),
+ setStatus:text=>{$('learning-voice-status').textContent=text;},
+ isPaused:()=>lesson.paused,
+ isCommunicationPaused:()=>miloCommunicationPaused
+});
+const narrateMilo=()=>miloController.narrate();
+const chooseMilo=label=>miloController.choose(label);
+const mayaWelcome="Hi! I'm Maya. Would you like to help Milo the dragon on a rainy-day adventure, explore the forest, or travel into space? Tap a story picture to begin.";
+const renderForest=()=>renderForestScene($,{choice:lesson.choice,step:lesson.step,completed:lesson.completed});
+const miloView=createMiloView({
+ get:$,create:tag=>document.createElement(tag),
+ onChoose:label=>chooseMilo(label),
+ onReplay:()=>{stopMiloAudio();milo.reset();miloController.resetResponse();render();narrateMilo();},
+ onSkip:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();milo.next();render();narrateMilo();},
+ onRecover:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();miloController.resetResponse();if(milo.step===6)milo.finished=true;else milo.next();render();if(!milo.finished)narrateMilo();}
+});
+const renderMilo=()=>miloView.render({scene:milo.scene,step:milo.step,totalScenes:MILO_SCENES.length,finished:milo.finished,lastResponse:milo.lastResponse,boatItem:milo.boatItem,responding:miloController.responding,communicationPaused:miloCommunicationPaused});
+const renderLearning=()=>{
+ document.querySelector('.shell')?.classList.toggle('maya-story-active',miloActive);
+ $('milo-visual').hidden=!miloActive;
+ $('milo-help').hidden=!miloActive;
+ $('milo-response').hidden=true;
+ $('milo-prompt').hidden=true;
+ if(miloActive){renderMilo();return;}
+ renderForest();
+ const scenes=lesson.choice?storyScenes[lesson.choice]:null;
+ $('story-choices').hidden=!!lesson.choice;
+ $('learning-options').hidden=!lesson.choice||lesson.completed;
+ $('learning-back').hidden=!lesson.choice;
+ $('learning-heading').textContent=!lesson.choice?'What adventure would you like?':lesson.choice==='Bears'?'The Little Forest Bear':'A Rocket Adventure';
+ $('learning-progress').textContent=!lesson.choice?'Choose an adventure':lesson.completed?'The end!':`Page ${lesson.step+1} of 3`;
+ const scene=lesson.choice&&!lesson.completed?scenes[lesson.step]:null;
+ $('learning-narration').textContent=!lesson.choice?mayaWelcome:scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
+ $('forest-caption').textContent=lesson.choice==='Bears'?lesson.lastEvent:'';
+ $('learning-replay').textContent=!lesson.choice?'🔊 Hear Maya':lesson.completed?'Play story again':'🔊 Hear story again';
+ renderLearningChoices({
+  host:$('learning-options'),scene,create:tag=>document.createElement(tag),
+  onChoose:name=>{
+   if(lesson.paused)return;
+   const response=scene.responses[name];
+   lesson.explore(name);
+   lesson.lastEvent=response;
+   render();
+   const next=lesson.completed?' The end.':(' '+scenes[lesson.step].line);
+   const branch=lesson.choice==='Bears'&&lesson.step===2?(lesson.path[0]==='Follow the footprints'?' The footprints helped Pip find the scarf.':' The feather helped Pip find his bird friend.') : '';
+   tellStory(response+branch+next);
+  }
+ });
+};
+$('learning-replay').onclick=()=>{
+ if(lesson.paused)return;
+ if(miloActive){if(milo.finished){milo.reset();miloController.resetResponse();render();}miloCommunicationPaused=false;narrateMilo();return;}
+ if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
+ tellStory($('learning-narration').textContent);
+};
+$('learning-back').onclick=()=>{if(lesson.paused)return;stopMiloAudio();miloActive=false;miloController.resetResponse();miloCommunicationPaused=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
+const render=()=>{
+ $('pad').classList.toggle('hidden',controller.mode==='closed');
+ $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
+ $('pin').setAttribute('aria-pressed',String(controller.mode==='always'));
+ $('pin').textContent=controller.mode==='always'?'Unpin pad':'Keep open';
+ $('phrase').textContent=model.phrase||(controller.communicationMode==='quick'?'Tap any picture to speak':'Choose pictures to make a message');
+ $('quick-mode').setAttribute('aria-pressed',String(controller.communicationMode==='quick'));
+ $('build-mode').setAttribute('aria-pressed',String(controller.communicationMode==='build'));
+ $('message-label').textContent=controller.communicationMode==='quick'?'Last word':'My message';
+ $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
+ $('close').hidden=controller.mode==='always';
+ renderLearning();
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':miloActive?(milo.finished?'Milo story complete.':'Choose a story picture to continue. Talk is always available.'):lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
+};
+const perform=async fn=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
+function buildIconPicker(host,input){
+ host.replaceChildren();
+ const groups=document.createElement('div');groups.className='icon-category-tabs';groups.setAttribute('aria-label','Icon categories');
+ const choices=document.createElement('div');choices.className='icon-options';choices.setAttribute('aria-label','Choose an icon');
+ const selected=document.createElement('div');selected.className='icon-selection';selected.setAttribute('role','status');
+ const buttons=[];
+ const updatePicker=()=>{
+   for(const button of choices.children)button.setAttribute('aria-pressed',String(button.textContent===input.value));
+   selected.textContent='Selected icon: '+(input.value||'none');
+ };
+ const showCategory=name=>{
+   for(const btn of buttons)btn.setAttribute('aria-pressed',String(btn.textContent===name));
+   choices.replaceChildren();
+   for(const symbol of getIcons(name)){
+     const btn=document.createElement('button');btn.type='button';btn.className='icon-choice';btn.textContent=symbol;
+     btn.setAttribute('aria-label','Choose '+symbol+' icon');
+     btn.onclick=()=>{input.value=symbol;updatePicker();};choices.append(btn);
+   }
+   updatePicker();
+ };
+ for(const category of ICON_CATEGORIES){
+   const btn=document.createElement('button');btn.type='button';btn.className='icon-category';btn.textContent=category.name;
+   btn.onclick=()=>showCategory(category.name);buttons.push(btn);groups.append(btn);
+ }
+ host.append(groups,selected,choices);
+ input.addEventListener('input',updatePicker);
+ const found=ICON_CATEGORIES.find(c=>c.icons.includes(input.value));
+ showCategory(found?.name||'Emotions');
+ // Expose reset for adding multiple custom words without rebuilding the editor.
+ host.resetSelection=()=>{showCategory('Symbols');updatePicker();};
+}
+// Caregiver access controls never wrap or disable the communication buttons.
+const parentKey='kindred-parent-pin-v1';
+let unlocked=false;
+let challenge=createChallenge();
+const storedPin=()=>{try{return JSON.parse(localStorage.getItem(parentKey)||'null');}catch{return null;}};
+const newChallenge=()=>{
+ challenge=createChallenge();
+ $('forgot-pin').hidden=!storedPin();
+ $('recover-panel').hidden=true;
+ const hasPin=Boolean(storedPin());
+ $('parent-question').textContent=hasPin?'Enter caregiver PIN':`Adult question: ${challenge.a} + ${challenge.b} = ?`;
+ $('parent-answer').value='';
+ $('parent-answer').setAttribute('autocomplete',hasPin?'current-password':'off');
+ $('parent-answer').setAttribute('maxlength',hasPin?'8':'3');
+ $('parent-unlock-hint').textContent=hasPin?'Enter your saved 4–8 digit PIN to unlock settings.':'Answer the adult question to unlock caregiver settings.';
+};
+const setUnlocked=value=>{unlocked=value;$('caregiver-editor').hidden=!value;$('parent-gate').hidden=value;$('parent-lock-label').textContent=value?'🔓 Unlocked':'🔒 Locked';if(!value){renderVocabulary();$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;newChallenge();}};
+newChallenge();
+const closeParent=()=>{$('caregiver-panel').hidden=true;document.body.classList.remove('parent-active');setUnlocked(false);$('open-parent-settings').focus();};
+$('exit-parent').onclick=closeParent;
+const selectParentTab=tab=>{for(const el of document.querySelectorAll('[data-parent-tab]')){const current=el.dataset.parentTab===tab;el.classList.toggle('active',current);el.setAttribute('aria-selected',String(current));}for(const pane of document.querySelectorAll('[data-parent-pane]'))pane.hidden=pane.dataset.parentPane!==tab;};
+for(const tab of document.querySelectorAll('[data-parent-tab]'))tab.onclick=()=>{selectParentTab(tab.dataset.parentTab);if(tab.dataset.parentTab==='arrange')renderArrange();};
+
+$('word-search').oninput=()=>{const q=$('word-search').value.trim().toLowerCase();for(const el of $('custom-list').querySelectorAll('.custom-row')){const next=el.nextElementSibling;const hide=!el.textContent.toLowerCase().includes(q);el.hidden=hide;if(next?.classList.contains('edit-word'))next.hidden=hide;}};
+$('unlock-parent').onsubmit=async e=>{
+ e.preventDefault();
+ const answer=$('parent-answer').value.trim(),record=storedPin();
+ let okay=false;
+ if(record){okay=validPin(answer)&&await pinDigest(answer,record.salt)===record.digest;}
+ else okay=verifyChallenge(challenge.a,challenge.b,answer);
+ if(okay){$('parent-status').textContent='';setUnlocked(true);renderVocabulary();}else{$('parent-status').textContent=record?'Incorrect PIN. Please try again.':'Try the adult question again.';newChallenge();}
+};
+$('lock-parent').onclick=()=>setUnlocked(false);
+const showRecoveryCode=code=>{$('recovery-code-output').textContent=code;$('recovery-code-display').hidden=false;$('recovery-setup-status').textContent='Save this code in a safe place. Anyone with it and access to this browser can reset the PIN.';};
+$('hide-recovery-code').onclick=()=>{$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;$('recovery-setup-status').textContent='Recovery code hidden. Store your copy safely.';};
+$('set-parent-pin').onclick=async()=>{
+ const status=$('pin-status');
+ if(!unlocked){status.textContent='Unlock Parent Settings first.';return;}
+ const pin=$('parent-pin').value.trim();
+ if(!validPin(pin)){status.textContent='PIN must contain 4 to 8 numbers only.';return;}
+ if(!confirm('Save your PIN and generate a recovery code? Store the code safely.'))return;
+ try{
+  const {record,code}=await makeRecoveryRecord(pin);
+  localStorage.setItem(parentKey,JSON.stringify(record));
+  if(storedPin()?.recoveryDigest!==record.recoveryDigest)throw Error('Could not verify saved recovery information.');
+  $('parent-pin').value='';
+  status.textContent='PIN saved. Store the new recovery code before locking settings.';
+  showRecoveryCode(code);newChallenge();
+ }catch(e){status.textContent='PIN not saved: '+(e?.message||'storage unavailable');}
+};
+$('generate-recovery').onclick=async()=>{
+ if(!unlocked)return;
+ try{
+  const old=storedPin();if(!old)throw Error('Set a PIN first.');
+  if(!confirm('Create a new recovery code? Any previous recovery code will stop working.'))return;
+  const {record,code}=await addRecoveryToExisting(old);
+  localStorage.setItem(parentKey,JSON.stringify(record));
+  if(storedPin()?.recoveryDigest!==record.recoveryDigest)throw Error('Could not verify saved recovery code.');
+  showRecoveryCode(code);
+ }catch(e){$('recovery-setup-status').textContent='Recovery code not saved: '+(e?.message||'unknown error');}
+};
+$('forgot-pin').onclick=()=>{
+ $('recover-panel').hidden=false;$('unlock-parent').hidden=true;$('forgot-pin').hidden=true;
+ $('recovery-status').textContent=storedPin()?.recoveryDigest?'Enter the recovery code saved when you set up your PIN.':'This PIN has no recovery code yet. A code must be created while Parent Settings is unlocked; this prototype cannot bypass an existing PIN.';
+ $('recovery-code-input').focus();
+};
+$('cancel-recovery').onclick=()=>{$('recovery-result-code').textContent='';$('recovery-result').hidden=true;$('reset-with-recovery').disabled=false;$('unlock-parent').hidden=false;newChallenge();};
+$('reset-with-recovery').onclick=async()=>{
+ const status=$('recovery-status'),code=$('recovery-code-input').value,pin=$('replacement-pin').value.trim();
+ try{
+  const result=await resetPinWithRecovery(storedPin(),code,pin);
+  localStorage.setItem(parentKey,JSON.stringify(result.record));
+  if(storedPin()?.recoveryDigest!==result.record.recoveryDigest)throw Error('Unable to verify saved credentials.');
+  $('recovery-code-input').value='';$('replacement-pin').value='';
+  $('recovery-result').hidden=false;
+  $('recovery-result-code').textContent=result.code;
+  status.textContent='PIN reset! Save this NEW recovery code before returning to unlock. The old code no longer works.';
+  $('reset-with-recovery').disabled=true;
+ }catch(e){status.textContent=(e.message==='Invalid recovery code.'?'Recovery code incorrect. Please try again.':e.message);}
+};
+$('remove-parent-pin').onclick=()=>{
+ if(!unlocked||!storedPin())return;
+ if(!confirm('Remove this caregiver PIN? Future access will use an adult question.'))return;
+ try{localStorage.removeItem(parentKey);$('pin-status').textContent='Caregiver PIN removed.';$('recovery-code-output').textContent='';$('recovery-code-display').hidden=true;newChallenge();}catch{$('pin-status').textContent='Could not remove PIN.';}
+};
+buildIconPicker($('add-icon-picker'),$('new-symbol'));
+
+const movePicture=(source,target,after=false)=>{
+ if(!unlocked){$('arrange-status').textContent='Unlock Parent Settings to arrange pictures.';return;}
+ if(source===target)return;
+ const before=model.exportVocabulary();
+ try{
+  model.moveWord(source,target,after);
+  if(!saveVocabulary()){model.importVocabulary(before);$('arrange-status').textContent='Could not save arrangement. Previous order restored.';renderVocabulary();return;}
+  $('arrange-status').textContent='Picture order saved on this device.';
+  renderVocabulary();
+ }catch(error){model.importVocabulary(before);$('arrange-status').textContent=error.message;renderVocabulary();}
+};
+const renderArrange=()=>{
+ const grid=$('arrange-grid');grid.replaceChildren();
+ if(!unlocked)return;
+ for(let i=0;i<model.words.length;i++){
+  const word=model.words[i],tile=document.createElement('div');
+  tile.className='arrange-tile symbol'+(['help','stop','break','hurt'].includes(word.id)?' urgent':'');
+  tile.dataset.wordId=word.id;tile.setAttribute('aria-label',word.label+', position '+(i+1));
+  const pic=document.createElement('div');pic.className='arrange-picture';pic.append(visualFor(word));
+  const label=document.createElement('span');label.textContent=word.label;
+  const grip=document.createElement('div');grip.className='arrange-grip';grip.textContent='⠿ Drag picture';grip.setAttribute('aria-hidden','true');
+  tile.append(pic,label,grip);
+  const controls=document.createElement('div');controls.className='arrange-controls';
+  for(const [text,other,after] of [['↑',model.words[i-1],false],['↓',model.words[i+1],true]]){
+   const btn=document.createElement('button');btn.type='button';btn.className='quiet';btn.textContent=text;
+   btn.setAttribute('aria-label',(after?'Move later: ':'Move earlier: ')+word.label);
+   btn.disabled=!other;
+   btn.onclick=()=>{if(other)movePicture(word.id,other.id,after);};
+   controls.append(btn);
+  }
+  tile.append(controls);
+  // Pointer capture prevents tablet scrolling from stealing the drag.
+  tile.addEventListener('pointerdown',e=>{
+   if(!unlocked||e.button!==0||e.target.closest('button'))return;
+   e.preventDefault();
+   const id=e.pointerId,originX=e.clientX,originY=e.clientY;
+   tile.setPointerCapture(id);
+   let hover=null;
+   const targetAt=(x,y)=>{
+    const el=document.elementFromPoint(x,y)?.closest('.arrange-tile');
+    return el&&el!==tile?el:null;
+   };
+   const cleanup=()=>{
+    hover?.classList.remove('arrange-drop');
+    tile.classList.remove('arrange-moving');
+    tile.removeEventListener('pointermove',moving);
+    tile.removeEventListener('pointerup',finish);
+    tile.removeEventListener('pointercancel',cancel);
+    tile.removeEventListener('lostpointercapture',cancel);
+    if(tile.hasPointerCapture(id))tile.releasePointerCapture(id);
+   };
+   const moving=ev=>{
+    if(Math.hypot(ev.clientX-originX,ev.clientY-originY)>8)tile.classList.add('arrange-moving');
+    const next=targetAt(ev.clientX,ev.clientY);
+    if(next!==hover){hover?.classList.remove('arrange-drop');hover=next;hover?.classList.add('arrange-drop');}
+   };
+   const finish=ev=>{
+    const target=targetAt(ev.clientX,ev.clientY),moved=Math.hypot(ev.clientX-originX,ev.clientY-originY)>12;
+    cleanup();
+    if(moved&&target)movePicture(word.id,target.dataset.wordId);
+   };
+   const cancel=()=>cleanup();
+   tile.addEventListener('pointermove',moving);
+   tile.addEventListener('pointerup',finish);
+   tile.addEventListener('pointercancel',cancel);
+   tile.addEventListener('lostpointercapture',cancel);
+  });
+  grid.append(tile);
+ }
+};
+$('finish-arranging').onclick=()=>selectParentTab('words');
+
+const renderVocabulary=()=>{
+ $('vocab').replaceChildren();
+ for(const word of model.words){const button=document.createElement('button');button.className='symbol'+(['help','stop','break','hurt'].includes(word.id)?' urgent':'');button.type='button';button.setAttribute('aria-label',word.label);const icon=visualFor(word);const label=document.createElement('span');label.textContent=word.label;button.append(icon,label);button.onclick=()=>{controller.selectAndSpeak(word.id).catch(e=>{$('speech-status').textContent=e.message;});render();};$('vocab').append(button);}
+ renderArrange();
+ $('custom-list').replaceChildren();
+ for(const w of model.words){
+   const row=document.createElement('div');row.className='custom-row';
+   const label=document.createElement('span');label.textContent=w.label+(w.custom?'':' (built-in)')+' ';label.prepend(visualFor(w));
+   const edit=document.createElement('button');edit.type='button';edit.className='quiet';edit.textContent='Change word / icon';
+   const editor=document.createElement('form');editor.className='edit-word hidden';
+   const textLabel=document.createElement('label');textLabel.textContent='Word or phrase';
+   const wordInput=document.createElement('input');wordInput.value=w.label;wordInput.maxLength=100;wordInput.required=true;textLabel.append(wordInput);
+   const symbolLabel=document.createElement('label');symbolLabel.textContent='Icon (tap a picture below or type an emoji)';
+   const symbolInput=document.createElement('input');symbolInput.value=w.emoji;symbolInput.maxLength=16;symbolInput.setAttribute('aria-label','Icon for '+w.label);symbolLabel.append(symbolInput);
+   const photoLabel=document.createElement('label');photoLabel.textContent='Personal photo (optional)';const photoInput=document.createElement('input');photoInput.type='file';photoInput.accept='image/png,image/jpeg,image/webp';photoLabel.append(photoInput);
+   const useIcon=document.createElement('label');const noPhoto=document.createElement('input');noPhoto.type='checkbox';useIcon.append(noPhoto,document.createTextNode('Remove photo / use emoji instead'));
+   const picker=document.createElement('div');picker.className='icon-picker';picker.setAttribute('aria-label','Choose icon for '+w.label);
+   buildIconPicker(picker,symbolInput);
+   const save=document.createElement('button');save.type='submit';save.className='primary';save.textContent='Save changes';
+   const cancel=document.createElement('button');cancel.type='button';cancel.className='quiet';cancel.textContent='Cancel';cancel.onclick=()=>editor.classList.add('hidden');
+   editor.append(textLabel,symbolLabel,photoLabel,useIcon,picker,save,cancel);
+   edit.onclick=()=>{if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}editor.classList.toggle('hidden');if(!editor.classList.contains('hidden'))symbolInput.focus();};
+   editor.onsubmit=async e=>{e.preventDefault();if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}try{const photo=noPhoto.checked?null:photoInput.files?.length?await compressPhoto(photoInput.files[0]):w.photo??null;model.updateWord(w.id,wordInput.value,symbolInput.value,photo);if(!saveVocabulary())return;$('edit-status').textContent='Saved changes to '+wordInput.value.trim();renderVocabulary();render();}catch(error){$('edit-status').textContent=error.message;}};
+   const del=document.createElement('button');del.type='button';del.className='quiet';del.textContent='Remove';del.disabled=['help','stop','break'].includes(w.id);del.title=del.disabled?'This essential communication button cannot be removed':'';del.onclick=()=>{if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}if(!confirm('Remove '+w.label+' from the pad?'))return;try{model.removeWord(w.id);}catch(err){$('edit-status').textContent=err.message;return;}saveVocabulary();$('edit-status').textContent='Removed '+w.label;renderVocabulary();render();};
+   row.append(label,edit,del);$('custom-list').append(row,editor);
+ }
+};
+$('add-word').onsubmit=async e=>{e.preventDefault();if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}try{const photo=await compressPhoto($('new-photo').files?.[0]);const w=model.addCustom($('new-word').value,$('new-symbol').value,photo);saveVocabulary();$('new-word').value='';$('new-symbol').value='💬';$('new-photo').value='';$('add-icon-picker').resetSelection();$('edit-status').textContent='Added '+w.label;renderVocabulary();render();}catch(err){$('edit-status').textContent=err.message;}};
+$('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent='Unlock Parent Settings before changing words.';return;}
+ if(!confirm('Restore all original built-in words and pictures? Your added words will stay.'))return;
+ model.restoreBuiltins();saveVocabulary();$('edit-status').textContent='Original words restored. Your added words are unchanged.';renderVocabulary();render();
+};
+// Concept 5 navigation changes only the child-facing entry; lesson/AAC state stays intact.
+let homeCategory='stories';
+const showHome=()=>{
+ stopMiloAudio();miloActive=false;miloCommunicationPaused=false;miloController.resetResponse();
+ lesson.back();milo.reset();
+ $('kindred-home').hidden=false;document.querySelector('.lesson').hidden=true;
+ document.querySelectorAll('.story').forEach(b=>{b.hidden=false;b.classList.remove('selected');});
+ render();
+};
+const showActivities=category=>{
+ homeCategory=category;
+ $('kindred-home').hidden=true;document.querySelector('.lesson').hidden=false;
+ // The existing Forest and Space choice-based activities are initial Games entries.
+ // Milo remains a prerecorded story and is never presented as a game.
+ document.querySelectorAll('.story').forEach(b=>{
+   b.hidden=category==='games'&&b.dataset.choice==='Milo';
+ });
+ $('learning-heading').textContent=category==='games'?'Choose a picture activity':'Choose a story';
+ $('learning-progress').textContent=category==='games'?'Play with choices':'Choose an adventure';
+ $('story-choices').hidden=false;
+ if(category==='games'){$('learning-narration').textContent='Choose Forest or Space to explore and make choices.';}
+};
+$('home-stories').onclick=()=>showActivities('stories');
+$('home-games').onclick=()=>showActivities('games');
+$('home-return').onclick=showHome;
+renderVocabulary();
+$('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
+$('talk').onclick=()=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
+$('pin').onclick=()=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
+$('close').onclick=()=>{controller.close();if(miloActive){miloCommunicationPaused=false;miloController.resetResponse();}render();};
+$('speak').onclick=()=>perform(()=>controller.speak());
+$('quick-mode').onclick=()=>{controller.setCommunicationMode('quick');render();};
+$('build-mode').onclick=()=>{controller.setCommunicationMode('build');render();};
+$('preview-voice').onclick=()=>{
+ // Preview may cancel an earlier sample; regular AAC taps never cancel speech.
+ if('speechSynthesis' in window)window.speechSynthesis.cancel();
+ $('voice-settings-status').textContent='Previewing at pitch '+$('pitch').value+' and speed '+$('rate').value+'. If it sounds unchanged, try an on-device voice; some engines ignore these controls.';
+ perform(()=>speaker('Hello! This is my voice. Let us explore together and see how I sound today.'));
+};
+const aacPreferences=createAacPreferenceStore(localStorage);
+const refreshVoices=()=>{
+ if(!('speechSynthesis' in window))return;
+ const selection=$('voice'),previous=selection.value;
+ const stored=aacPreferences.readVoice();
+ selection.replaceChildren(new Option('Device default',''));
+ const voices=englishVoices(window.speechSynthesis.getVoices());
+ for(const v of voices)selection.add(new Option(voiceLabel(v),v.voiceURI));
+ const preferred=[previous,stored].find(value=>value&&voices.some(v=>v.voiceURI===value));
+ const chosen=chooseVoice(voices,preferred);
+ selection.value=preferred||chosen?.voiceURI||'';
+ $('voice-hint').textContent=chosen?(chosen.localService?'Preferred on-device voice: ':'Voice may require internet: ')+chosen.name+'. Preview to confirm speech quality and availability.':'No English voice detected. Install an English device voice in system settings; AAC text remains visible.';
+};
+$('voice').addEventListener('change',()=>{
+ $('voice-settings-status').textContent=aacPreferences.saveVoice($('voice').value)?'Voice preference saved on this device.':'Could not save voice selection.';
+});
+
+const savedTuning=aacPreferences.readTuning();
+if(savedTuning){for(const id of ['pitch','rate']){const value=String(savedTuning[id]??'');if([...$(id).options].some(o=>o.value===value))$(id).value=value;}}
+for(const id of ['pitch','rate'])$(id).addEventListener('change',()=>{
+ const saved=aacPreferences.saveTuning({pitch:$('pitch').value,rate:$('rate').value});
+ $('voice-settings-status').textContent=saved?'Preferences saved. Pitch '+$('pitch').value+', speed '+$('rate').value+'. Tap Preview to hear a new sample; your browser voice may ignore the adjustment.':'Could not save voice preferences.';
+});
+refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',refreshVoices);
+$('undo').onclick=()=>{controller.undo();render();};
+$('clear').onclick=()=>{controller.clear();render();};
+$('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;miloCommunicationPaused=false;miloController.resetResponse();milo.reset();render();narrateMilo();return;}stopMiloAudio();miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
+render();

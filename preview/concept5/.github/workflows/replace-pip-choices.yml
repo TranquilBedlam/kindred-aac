@@ -1,0 +1,66 @@
+name: Install replacement Pip choice recordings
+on:
+  push:
+    branches: [gh-pages]
+    paths:
+      - 'qa/pip-replacements/*.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unpack only thirteen new Pip response recordings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, zipfile
+          files=sorted(Path('qa/pip-replacements').glob('*.zip'),key=lambda p:p.stat().st_mtime)
+          if not files: raise SystemExit('Upload a ZIP to qa/pip-replacements/')
+          wanted={'01-open-door','01-ask-whos-there','02-basket','02-blanket','03-leaf','03-stick','04-flower','04-leaf','05-blow','05-push','06-sandwiches','06-apple','07-goodbye'}
+          audio={}
+          with zipfile.ZipFile(files[-1]) as z:
+            for item in z.infolist():
+              if item.is_dir(): continue
+              filename=Path(item.filename).name
+              match=re.search(r'(0[1-7]-(?:open-door|ask-whos-there|basket|blanket|leaf|stick|flower|blow|push|sandwiches|apple|goodbye))(?=\.mp3$)',filename,re.I)
+              if not match: raise SystemExit('Unexpected recording: '+filename)
+              key=match.group(1).lower()
+              if key not in wanted or key in audio: raise SystemExit('Invalid or duplicate recording: '+key)
+              data=z.read(item)
+              if len(data)<1500 or not (data.startswith(b'ID3') or (data[0]==255 and (data[1]&224)==224)):
+                raise SystemExit('Bad MP3 '+filename)
+              audio[key]=data
+          if set(audio)!=wanted:raise SystemExit(f'Missing {sorted(wanted-set(audio))}; extra {sorted(set(audio)-wanted)}')
+          folder=Path('audio')
+          for i in range(1,8):
+            p=folder/f'scene-{i}.mp3'
+            if not p.is_file() or p.stat().st_size<1500:raise SystemExit('Approved narration missing: '+str(p))
+          for key,data in audio.items(): (folder/(key+'.mp3')).write_bytes(data)
+          print('Replaced exactly 13 choice files; 7 narration files preserved.')
+          PY
+      - name: Full story, AAC, and audio regression suite
+        run: |
+          node --check src/main-pip-browser.js
+          node --test tests/pip-regression.test.mjs tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs
+      - name: Publish MP3s only after tests pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audio/*.mp3
+          if ! git diff --cached --quiet; then
+            git commit -m 'audio: replace 13 choice clips with verified Pip recordings'
+            git push origin HEAD:gh-pages
+          fi

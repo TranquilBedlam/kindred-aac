@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {LessonModel} from '../src/model.js';
+test('story progresses through three choices and finishes',()=>{const l=new LessonModel();l.choose('Bears');assert.equal(l.step,0);for(let i=0;i<3;i++){l.explore(['Look under leaves','Ask the bird','Head home'][i]);assert.equal(l.step,i+1);}assert.equal(l.completed,true);l.choose('Space');assert.equal(l.completed,false);assert.equal(l.step,0);l.explore('Moon');assert.equal(l.step,1);l.back();assert.equal(l.choice,null);});
+test('invalid story options are rejected',()=>{const l=new LessonModel();assert.throws(()=>l.explore('Look under leaves'));assert.throws(()=>l.choose('Nope'));l.choose('Space');assert.throws(()=>l.explore('Tree'));});
+test('AAC pause and resume do not lose story progress',()=>{const l=new LessonModel();l.choose('Space');l.explore('Rocket');l.pause();assert.equal(l.step,1);l.resume();assert.equal(l.step,1);});
+
+test('Forest choices preserve a branching path and reset for replay',()=>{const l=new LessonModel();l.choose('Bears');l.explore('Look under leaves');l.explore('Ask the bird');assert.deepEqual(l.path,['Look under leaves','Ask the bird']);l.pause();l.resume();assert.equal(l.step,2);l.choose('Bears');assert.deepEqual(l.path,[]);assert.equal(l.lastEvent,'');});

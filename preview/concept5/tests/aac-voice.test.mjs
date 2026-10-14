@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {englishVoices,chooseVoice,voiceLabel} from '../src/aac/voice-selection.js';
+const remote={name:'Cloud voice',lang:'en-US',voiceURI:'cloud',localService:false};
+const local={name:'Installed voice',lang:'en-GB',voiceURI:'local',localService:true};
+const us={name:'Installed US voice',lang:'en-US',voiceURI:'us',localService:true};
+test('selects a local US voice ahead of a cloud voice',()=>assert.equal(chooseVoice([remote,local,us],''),us));
+test('preserves explicitly selected voice',()=>assert.equal(chooseVoice([remote,local,us],'cloud'),remote));
+test('falls back to another installed English voice',()=>assert.equal(chooseVoice([remote,local],''),local));
+test('does not choose non-English voices',()=>assert.deepEqual(englishVoices([{name:'French',lang:'fr-FR'},remote]),[remote]));
+test('reports voice locality without guaranteeing offline behavior',()=>{assert.match(voiceLabel(local),/on-device/);assert.match(voiceLabel(remote),/may require internet/);});

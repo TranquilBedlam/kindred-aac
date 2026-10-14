@@ -1,0 +1,38 @@
+name: Kindred AAC permanent regression gate
+on:
+  push:
+    branches: [gh-pages, 'feat/**', 'fix/**', 'qa/**', 'refactor/**']
+  pull_request:
+    branches: [gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  all-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check src/main-pip-browser.js
+          node --check src/milo-approved-story.js
+          node --check src/milo-story-maya-choice-qa.js
+          node --check src/maya/milo-controller.js
+          node --check src/maya/milo-view.js
+          node --check src/maya/forest-view.js
+          node --check src/maya/learning-choice-view.js
+          node --check src/aac/pip-audio-service.js
+          node --check src/aac/preference-store.js
+          node --check src/aac/vocabulary-store.js
+          node --check src/aac/speech-service.js
+      - name: Story, audio, and AAC unit regressions
+        run: node --test tests/pip-regression.test.mjs tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs tests/milo-controller.test.mjs tests/milo-view.test.mjs tests/forest-view.test.mjs tests/learning-choice-view.test.mjs tests/entrypoint-compatibility.test.mjs tests/pip-audio-service.test.mjs tests/aac-preference-store.test.mjs tests/aac-vocabulary-store.test.mjs tests/aac-speech-service.test.mjs
+      - name: Install browser runner
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+      - name: Chromium and mobile-width browser regressions
+        run: npx playwright test tests/pip-regression.browser.spec.cjs tests/browser-arrange.spec.cjs tests/aac-accessibility.browser.spec.cjs --browser chromium --workers=1 --reporter=list

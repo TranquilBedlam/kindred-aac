@@ -1,0 +1,20 @@
+name: First learning activity checks
+on:
+  push:
+    branches: [feat/first-learning-activity]
+  pull_request:
+    branches: [gh-pages]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs tests/milo-story.test.mjs
+      - run: npm install --no-save @playwright/test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/browser-learning.spec.cjs tests/browser-arrange.spec.cjs --browser chromium --workers=1 --reporter=list
