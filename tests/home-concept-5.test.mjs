@@ -18,7 +18,7 @@ test('Talk and caregiver controls keep original stable IDs',()=>{
 });
 test('home navigation is wired and activity return exists',()=>{
  for(const id of ['home-stories','home-games','home-return'])assert.match(js,new RegExp("\\$\\('"+id+"'\\)"));
- assert.match(js,/data-choice="Milo"/);
+ assert.match(html,/data-choice="Milo"/);
  assert.match(html,/id="home-return"/);
 });
 test('AAC remains available above the learning layout',()=>{
