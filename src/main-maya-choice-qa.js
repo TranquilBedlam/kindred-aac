@@ -197,10 +197,14 @@ const renderMilo=()=>{
  $('learning-narration').textContent=scene.line;
  $('milo-visual').hidden=false;
  $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='04-flower'?'🌼':'🍁'):'');
+ $('milo-visual').setAttribute('aria-label',scene.title+' illustration placeholder');
+ $('milo-visual').dataset.scene=String(milo.step+1);
  $('milo-response').hidden=!milo.lastResponse;
  $('milo-response').textContent=milo.lastResponse;
  $('milo-prompt').hidden=milo.finished;
  $('milo-prompt').textContent=scene.prompt;
+ $('learning-heading').textContent=scene.title;
+ $('learning-progress').textContent='Milo the Dragon and the Rainy-Day Surprise · Scene '+(milo.step+1)+' of 7';
  $('milo-help').textContent='Maya will respond to your choice and continue to the next scene. Talk is always available.';
  $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear Maya';
  const host=$('learning-options');host.replaceChildren();
@@ -224,6 +228,7 @@ const renderMilo=()=>{
  }
 };
 const renderLearning=()=>{
+ document.querySelector('.shell')?.classList.toggle('maya-story-active',miloActive);
  $('milo-visual').hidden=!miloActive;
  $('milo-help').hidden=!miloActive;
  $('milo-response').hidden=true;
