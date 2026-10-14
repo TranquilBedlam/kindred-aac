@@ -422,6 +422,31 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
  if(!confirm('Restore all original built-in words and pictures? Your added words will stay.'))return;
  model.restoreBuiltins();saveVocabulary();$('edit-status').textContent='Original words restored. Your added words are unchanged.';renderVocabulary();render();
 };
+// Concept 5 navigation changes only the child-facing entry; lesson/AAC state stays intact.
+let homeCategory='stories';
+const showHome=()=>{
+ stopMiloAudio();miloActive=false;miloCommunicationPaused=false;miloController.resetResponse();
+ lesson.back();milo.reset();
+ $('kindred-home').hidden=false;document.querySelector('.lesson').hidden=true;
+ document.querySelectorAll('.story').forEach(b=>{b.hidden=false;b.classList.remove('selected');});
+ render();
+};
+const showActivities=category=>{
+ homeCategory=category;
+ $('kindred-home').hidden=true;document.querySelector('.lesson').hidden=false;
+ // The existing Forest and Space choice-based activities are initial Games entries.
+ // Milo remains a prerecorded story and is never presented as a game.
+ document.querySelectorAll('.story').forEach(b=>{
+   b.hidden=category==='games'&&b.dataset.choice==='Milo';
+ });
+ $('learning-heading').textContent=category==='games'?'Choose a picture activity':'Choose a story';
+ $('learning-progress').textContent=category==='games'?'Play with choices':'Choose an adventure';
+ $('story-choices').hidden=false;
+ if(category==='games'){$('learning-narration').textContent='Choose Forest or Space to explore and make choices.';}
+};
+$('home-stories').onclick=()=>showActivities('stories');
+$('home-games').onclick=()=>showActivities('games');
+$('home-return').onclick=showHome;
 renderVocabulary();
 $('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
 $('talk').onclick=()=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
