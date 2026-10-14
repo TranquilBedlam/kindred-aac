@@ -5,7 +5,6 @@ export function createMiloView({get:$,create,onChoose,onReplay,onSkip,onRecover}
  $('story-choices').hidden=true;$('learning-options').hidden=false;$('learning-back').hidden=false;
  $('learning-heading').textContent='Milo the Dragon and the Rainy-Day Surprise';
  $('learning-progress').textContent=finished?'The end!':`Scene ${step+1} of 7`;
- const scene=scene;
  $('learning-narration').textContent=scene.line;
  $('milo-visual').hidden=false;
  $('milo-visual').textContent=scene.emoji+(boatItem?' '+(boatItem==='04-flower'?'🌼':'🍁'):'');
