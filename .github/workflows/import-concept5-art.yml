@@ -1,0 +1,35 @@
+name: Import approved 3D landscape asset
+on:
+  push:
+    branches: [feature/balanced-home-concept-5]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    if: github.event.head_commit.message == 'asset: trigger one-time 3D landscape import'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch permanent landscape asset
+        shell: bash
+        env:
+          SOURCE_URL: 'https://dnznrvs05pmza.cloudfront.net/gemini/gemini-3.1-flash-lite-image/images/92c556b0-b5e8-4a91-8513-16702980c8a0/d8698946-14bd-4fef-b0c1-d5a51d5da65c/Premium_polished_three_dimensional_animated_children_s_fanta.jpg?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMDVkZDkzYjMyYTg1OWU2MyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjEwNjU0N30.THr6Vu4LM_tLH0-qAHfmMvGfXu1geox7ikEk6GXEVKo'
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error "$SOURCE_URL" -o assets/concept5-landscape-3d.jpg
+          file assets/concept5-landscape-3d.jpg
+          test "$(wc -c < assets/concept5-landscape-3d.jpg)" -gt 10000
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('assets/concept5-landscape-3d.jpg')
+          assert p.read_bytes()[:3]==bytes.fromhex('ffd8ff'),'expected a real JPEG'
+          print('Downloaded verified 3D landscape JPEG:',p.stat().st_size)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/concept5-landscape-3d.jpg
+          git commit -m "asset: store permanent 3D illustrated landscape"
+          git push origin HEAD:feature/balanced-home-concept-5
