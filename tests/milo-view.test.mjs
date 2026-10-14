@@ -30,3 +30,5 @@ test('KISS: view writes scene heading and progress only once without changing ch
  assert.equal(f.el['learning-heading'].writes(),1);
  assert.equal(f.el['learning-progress'].writes(),1);
 });
+
+test('progress label uses actual length of future shorter story',()=>{const f=fixture();f.view.render({scene:f.scene,step:1,totalScenes:3,finished:false,lastResponse:'',boatItem:'',responding:false,communicationPaused:false});assert.equal(f.el['learning-progress'].textContent,'Milo the Dragon and the Rainy-Day Surprise · Scene 2 of 3');});
