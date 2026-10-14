@@ -22,12 +22,13 @@ jobs:
           node --check src/milo-story-maya-choice-qa.js
           node --check src/maya/milo-controller.js
           node --check src/maya/milo-view.js
+          node --check src/maya/forest-view.js
           node --check src/aac/pip-audio-service.js
           node --check src/aac/preference-store.js
           node --check src/aac/vocabulary-store.js
           node --check src/aac/speech-service.js
       - name: Story, audio, and AAC unit regressions
-        run: node --test tests/pip-regression.test.mjs tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs tests/milo-controller.test.mjs tests/milo-view.test.mjs tests/pip-audio-service.test.mjs tests/aac-preference-store.test.mjs tests/aac-vocabulary-store.test.mjs tests/aac-speech-service.test.mjs
+        run: node --test tests/pip-regression.test.mjs tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs tests/milo-controller.test.mjs tests/milo-view.test.mjs tests/forest-view.test.mjs tests/pip-audio-service.test.mjs tests/aac-preference-store.test.mjs tests/aac-vocabulary-store.test.mjs tests/aac-speech-service.test.mjs
       - name: Install browser runner
         run: |
           npm install --no-save @playwright/test

@@ -4,6 +4,7 @@ import {MiloStory,MILO_SCENES} from './milo-story-maya-choice-qa.js';
 import {APPROVED_AUDIO} from './milo-approved-story.js';
 import {createMiloController} from './maya/milo-controller.js';
 import {createMiloView} from './maya/milo-view.js';
+import {renderForestScene} from './maya/forest-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {createAacPreferenceStore} from './aac/preference-store.js';
 import {createVocabularyStore} from './aac/vocabulary-store.js';
@@ -135,16 +136,7 @@ const miloController=createMiloController({
 const narrateMilo=()=>miloController.narrate();
 const chooseMilo=label=>miloController.choose(label);
 const mayaWelcome="Hi! I'm Maya. Would you like to help Milo the dragon on a rainy-day adventure, explore the forest, or travel into space? Tap a story picture to begin.";
-const renderForest=()=>{
- const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
- const step=lesson.step;
- forest.dataset.scene=lesson.completed?'home':String(step);
- $('forest-character').textContent=step===0?'🐻':step===1?'🐻':'🐻🧣';
- $('forest-object').textContent=step>=2?'🧣':step===1?'🍂':'❓';
- $('forest-bird').textContent=step>=1?'🐦':' '; 
- $('forest-sky').textContent=lesson.completed?'🌈':step>1?'🌤️':'☀️';
- forest.setAttribute('aria-label',lesson.completed?'Pip is home with his blue scarf':step===2?'Pip finds the blue scarf':step===1?'Pip follows clues in the forest':'Pip searches for his lost scarf');
-};
+const renderForest=()=>renderForestScene($,{choice:lesson.choice,step:lesson.step,completed:lesson.completed});
 const miloView=createMiloView({
  get:$,create:tag=>document.createElement(tag),
  onChoose:label=>chooseMilo(label),
