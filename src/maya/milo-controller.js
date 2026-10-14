@@ -5,7 +5,7 @@
 export function createMiloController({story,audio,play,stop,render,respond,disableChoices,setStatus,isPaused,isCommunicationPaused}){
  let responding=false;
  const blocked=()=>responding||isPaused()||isCommunicationPaused();
- const narrate=()=>{if(!isCommunicationPaused())play(audio.narration[story.step]);};
+ const narrate=()=>{if(!isPaused()&&!isCommunicationPaused())play(audio.narration[story.step]);};
  const choose=label=>{
   if(blocked())return;
   const {response,key}=story.choose(label);

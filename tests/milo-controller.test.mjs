@@ -21,3 +21,5 @@ test('restart is immediate, replays scene 1',()=>{const h=setup();h.state.step=6
 test('final goodbye concludes story without going to scene 8',()=>{const h=setup();h.state.step=6;h.controller.choose('07-goodbye');h.pending.at(-1)();assert.equal(h.state.step,6);assert.equal(h.state.finished,true);});
 
 test('a three-scene learning story finishes at its actual final scene',()=>{const h=setup(3);h.state.step=2;h.controller.choose('a');h.pending.at(-1)();assert.equal(h.state.step,2);assert.equal(h.state.finished,true);});
+
+test('paused learning does not start narration until resumed',()=>{const h=setup();h.state.paused=true;h.controller.narrate();assert.equal(h.calls.some(x=>x[0]==='play'),false);h.state.paused=false;h.controller.narrate();assert.deepEqual(h.calls.at(-1),['play','s0']);});
