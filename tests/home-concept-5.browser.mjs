@@ -9,6 +9,7 @@ try{
   const page=await context.newPage();
   await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
   assert.equal(await page.locator('#kindred-home').isVisible(),true,'home visible '+width);
+  assert.equal(await page.locator('#kindred-home').evaluate(el=>getComputedStyle(el).backgroundImage.includes('concept5-landscape.svg')),true,'landscape stylesheet actually applied '+width);
   assert.equal(await page.locator('#kindred-home img').count(),3,'three illustrated home assets '+width);
   assert.equal(await page.locator('#kindred-home img').evaluateAll(images=>images.every(i=>i.complete&&i.naturalWidth>0)),true,'all vector artwork loaded '+width);
   await page.screenshot({path:`concept-5-screenshots/home-${width}.png`,fullPage:true});
