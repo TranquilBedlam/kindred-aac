@@ -1,6 +1,7 @@
 import {validPin,verifyChallenge,createChallenge,pinDigest} from './parent.js';
 import {TalkingPortrait} from './maya/talking-portrait.js';
 import {MiloStory,MILO_SCENES} from './milo-story.js';
+import {APPROVED_AUDIO} from './milo-approved-story.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
 import {WORDS,CommunicationModel,LessonModel,PadController} from './model.js';
@@ -138,6 +139,43 @@ const tellStory=(words)=>{
   $('learning-voice-status').textContent='Starting narration…';
  }catch(error){mayaPortrait?.end();$('learning-voice-status').textContent=error.message;}
 };
+// Dedicated Pip recordings for the Milo experience. AAC speech uses the independent device voice.
+let miloAudio=null, miloAudioToken=0, miloResponding=false, miloCommunicationPaused=false;
+const stopMiloAudio=()=>{
+ miloAudioToken++;
+ if(miloAudio){miloAudio.onended=null;miloAudio.onerror=null;miloAudio.pause();miloAudio.removeAttribute('src');miloAudio=null;}
+ mayaPortrait?.end();
+};
+const playMiloClip=(file,onEnd)=>{
+ stopMiloAudio();
+ const token=miloAudioToken;
+ if(!file){$('learning-voice-status').textContent='Pip audio file is missing. The written story remains available.';return;}
+ const a=new Audio(file);miloAudio=a;
+ a.onplay=()=>{if(token!==miloAudioToken)return;if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is speaking.';};
+ a.onended=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();miloAudio=null;if(!miloCommunicationPaused&&onEnd)onEnd();};
+ a.onerror=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Pip MP3 unavailable. No replacement voice will be used.';miloAudio=null;};
+ a.play().catch(()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Tap Hear Maya to enable audio, or continue with the picture choices.';});
+};
+const narrateMilo=()=>{if(!miloCommunicationPaused)playMiloClip(APPROVED_AUDIO.narration[milo.step]);};
+const chooseMilo=(label)=>{
+ if(miloResponding||miloCommunicationPaused||lesson.paused)return;
+ const {response,key}=milo.choose(label);
+ stopMiloAudio();miloResponding=true;
+ render();
+ $('milo-response').hidden=false;$('milo-response').textContent=response||'';
+ $('learning-options').querySelectorAll('button').forEach(b=>b.disabled=true);
+ if(key==='07-restart'){milo.reset();miloResponding=false;render();narrateMilo();return;}
+ const complete=()=>{
+  if(miloCommunicationPaused||lesson.paused)return;
+  miloResponding=false;
+  if(milo.step===6){milo.finished=true;render();$('learning-voice-status').textContent='The end.';}
+  else {milo.next();render();narrateMilo();}
+ };
+ const file=APPROVED_AUDIO.choices[key];
+ // The real recording ending is the gateway. If missing, keep the scene and
+ // show a manual recovery control instead of inventing timing or synthetic Maya.
+ if(file)playMiloClip(file,complete);
+};
 const mayaWelcome="Hi! I'm Maya. Would you like to help Milo the dragon on a rainy-day adventure, explore the forest, or travel into space? Tap a story picture to begin.";
 const renderForest=()=>{
  const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
@@ -152,37 +190,38 @@ const renderForest=()=>{
 const renderMilo=()=>{
  $('forest-scene').hidden=true;
  $('forest-caption').textContent=milo.lastResponse;
- $('story-choices').hidden=true;
- $('learning-options').hidden=false;
- $('learning-back').hidden=false;
+ $('story-choices').hidden=true;$('learning-options').hidden=false;$('learning-back').hidden=false;
  $('learning-heading').textContent='Milo the Dragon and the Rainy-Day Surprise';
  $('learning-progress').textContent=milo.finished?'The end!':`Scene ${milo.step+1} of ${MILO_SCENES.length}`;
  const scene=milo.scene;
  $('learning-narration').textContent=scene.line;
  $('milo-visual').hidden=false;
- $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='Flower'?'🌼':'🍁'):'');
+ $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='04-flower'?'🌼':'🍁'):'');
  $('milo-response').hidden=!milo.lastResponse;
- $('milo-response').textContent=milo.lastResponse?milo.lastResponse+' You can try another picture or continue the story.':'';
+ $('milo-response').textContent=milo.lastResponse;
  $('milo-prompt').hidden=milo.finished;
  $('milo-prompt').textContent=scene.prompt;
- $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear this scene';
+ $('milo-help').textContent='Maya will respond to your choice and continue to the next scene. Talk is always available.';
+ $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear Maya';
  const host=$('learning-options');host.replaceChildren();
- if(milo.finished)return;
- for(const [name,[emoji]] of Object.entries(scene.actions)){
+ if(milo.finished){const again=document.createElement('button');again.type='button';again.className='learning-option';again.textContent='Read again';again.onclick=()=>{stopMiloAudio();milo.reset();miloResponding=false;render();narrateMilo();};host.append(again);return;}
+ for(const [label,[emoji]] of Object.entries(scene.actions)){
   const button=document.createElement('button');button.type='button';button.className='learning-option';
   const pic=document.createElement('span');pic.textContent=emoji;pic.setAttribute('aria-hidden','true');
-  const word=document.createElement('strong');word.textContent=name;
-  button.append(pic,word);
-  button.setAttribute('aria-label',name);
-  button.onclick=()=>{if(lesson.paused)return;const reply=milo.choose(name);render();tellStory(reply);};
-  host.append(button);
+  const word=document.createElement('strong');word.textContent=label;button.append(pic,word);
+  button.setAttribute('aria-label',label);button.disabled=miloResponding||miloCommunicationPaused;
+  button.onclick=()=>chooseMilo(label);host.append(button);
  }
- const next=document.createElement('button');next.type='button';next.className='learning-option';
- next.textContent=milo.step===MILO_SCENES.length-1?'Finish story':'Continue story →';
- next.classList.add('milo-continue');
- next.setAttribute('aria-label',milo.step===MILO_SCENES.length-1?'Finish story':'Continue story without choosing');
- next.onclick=()=>{if(lesson.paused)return;milo.next();render();if(!milo.finished)tellStory(milo.scene.line+' '+milo.scene.prompt);};
- host.append(next);
+ // Accessibility escape hatch only; never required after making a choice.
+ if(!miloResponding&&milo.step<6){
+  const skip=document.createElement('button');skip.type='button';skip.className='learning-option milo-continue';skip.textContent='Continue without choosing →';
+  skip.onclick=()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();milo.next();render();narrateMilo();};
+  host.append(skip);
+ }
+ if(miloResponding){
+  const recovery=document.createElement('button');recovery.type='button';recovery.className='learning-option milo-continue';recovery.textContent='Continue if audio is unavailable →';
+  recovery.onclick=()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();miloResponding=false;if(milo.step===6)milo.finished=true;else milo.next();render();if(!milo.finished)narrateMilo();};host.append(recovery);
+ }
 };
 const renderLearning=()=>{
  $('milo-visual').hidden=!miloActive;
@@ -224,11 +263,11 @@ const renderLearning=()=>{
 };
 $('learning-replay').onclick=()=>{
  if(lesson.paused)return;
- if(miloActive){if(milo.finished){milo.reset();render();}tellStory($('learning-narration').textContent);return;}
+ if(miloActive){if(milo.finished){milo.reset();miloResponding=false;render();}miloCommunicationPaused=false;narrateMilo();return;}
  if(lesson.completed){const choice=lesson.choice;lesson.choose(choice);render();}
  tellStory($('learning-narration').textContent);
 };
-$('learning-back').onclick=()=>{if(lesson.paused)return;miloActive=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
+$('learning-back').onclick=()=>{if(lesson.paused)return;stopMiloAudio();miloActive=false;miloResponding=false;miloCommunicationPaused=false;milo.reset();lesson.back();document.querySelectorAll('.story').forEach(x=>x.classList.remove('selected'));$('learning-voice-status').textContent='';render();};
 const render=()=>{
  $('pad').classList.toggle('hidden',controller.mode==='closed');
  $('talk').setAttribute('aria-expanded',String(controller.mode!=='closed'));
@@ -241,9 +280,9 @@ const render=()=>{
  $('speak').textContent=controller.communicationMode==='quick'?'🔊 Repeat last word':'🔊 Repeat full message';
  $('close').hidden=controller.mode==='always';
  renderLearning();
- $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':miloActive?(milo.finished?'Milo story complete.':'Choose an optional story action or Continue. Talk is always available.'):lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
+ $('lesson-status').textContent=lesson.paused?'Lesson paused while you talk.':miloActive?(milo.finished?'Milo story complete.':'Choose a story picture to continue. Talk is always available.'):lesson.completed?'Story complete! Choose another story or play again.':lesson.choice?'Tap a picture to continue the story, or open Talk anytime.':'You can choose a story, or open Talk anytime.';
 };
-const perform=async fn=>{try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
+const perform=async fn=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}try{$('speech-status').textContent='';await fn();}catch(e){$('speech-status').textContent=e.message;}finally{render();}};
 function buildIconPicker(host,input){
  host.replaceChildren();
  const groups=document.createElement('div');groups.className='icon-category-tabs';groups.setAttribute('aria-label','Icon categories');
@@ -468,9 +507,9 @@ $('restore-builtins').onclick=()=>{if(!unlocked){$('parent-status').textContent=
 };
 renderVocabulary();
 $('open-parent-settings').onclick=()=>{$('caregiver-panel').hidden=false;document.body.classList.add('parent-active');selectParentTab('words');$('caregiver-panel').scrollIntoView({block:'start'});if(unlocked)$('word-search').focus();else $('parent-answer').focus();};
-$('talk').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
-$('pin').onclick=()=>{mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
-$('close').onclick=()=>{controller.close();render();};
+$('talk').onclick=()=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='closed')controller.open();else if(controller.mode==='slide')controller.close();else controller.open('always');render();};
+$('pin').onclick=()=>{if(miloActive){stopMiloAudio();miloCommunicationPaused=true;}mayaPortrait?.end();if('speechSynthesis' in window)window.speechSynthesis.cancel();if(controller.mode==='always')controller.open('slide');else controller.open('always');render();};
+$('close').onclick=()=>{controller.close();if(miloActive){miloCommunicationPaused=false;miloResponding=false;}render();};
 $('speak').onclick=()=>perform(()=>controller.speak());
 $('quick-mode').onclick=()=>{controller.setCommunicationMode('quick');render();};
 $('build-mode').onclick=()=>{controller.setCommunicationMode('build');render();};
@@ -508,5 +547,5 @@ refreshVoices();if('speechSynthesis' in window)window.speechSynthesis.addEventLi
 $('undo').onclick=()=>{controller.undo();render();};
 $('clear').onclick=()=>{controller.clear();render();};
 $('sensory').onclick=()=>{const on=document.body.classList.toggle('calm');$('sensory').setAttribute('aria-pressed',String(on));};
-for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;milo.reset();render();tellStory(milo.scene.line+' '+milo.scene.prompt);return;}miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
+for(const b of document.querySelectorAll('.story'))b.onclick=()=>{if(lesson.paused)return;if(b.dataset.choice==='Milo'){miloActive=true;miloCommunicationPaused=false;miloResponding=false;milo.reset();render();narrateMilo();return;}stopMiloAudio();miloActive=false;lesson.choose(b.dataset.choice);document.querySelectorAll('.story').forEach(x=>x.classList.toggle('selected',x===b));render();tellStory($('learning-narration').textContent);};
 render();
