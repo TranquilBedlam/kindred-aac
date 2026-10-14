@@ -1,0 +1,43 @@
+name: Verify published Concept 5 preview
+on:
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check public preview, styled landscape and protected original
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import time,urllib.request
+          base='https://tranquilbedlam.github.io/kindred-aac/'
+          last=''
+          for attempt in range(24):
+              try:
+                  def fetch(path):
+                      request=urllib.request.Request(base+path,headers={'Cache-Control':'no-cache','User-Agent':'Kindred-Preview-Verification/1'})
+                      with urllib.request.urlopen(request,timeout=15) as response:
+                          return response.read().decode('utf-8'),response.status
+                  original,_=fetch('index.html?verification='+str(attempt))
+                  page,_=fetch('preview/concept5/index.html?verification='+str(attempt))
+                  css,_=fetch('preview/concept5/src/style.css?v=concept5-landscape-20261014&verify='+str(attempt))
+                  landscape,_=fetch('preview/concept5/assets/concept5-landscape.svg?verify='+str(attempt))
+                  assert 'data-preview-build="concept5-landscape-20261014"' in page,'new page version not live'
+                  assert 'concept5-landscape-20261014' in page,'versioned CSS not referenced'
+                  assert 'concept5-landscape.svg' in css,'illustrated CSS not live'
+                  assert '<svg' in landscape and 'viewBox="0 0 1200 720"' in landscape,'landscape asset not live'
+                  assert 'data-preview-build="concept5-landscape-20261014"' not in original,'original root replaced'
+                  print('PASS: public preview HTML, CSS and landscape are updated; original root preserved')
+                  break
+              except Exception as exc:
+                  last=str(exc)
+                  print(f'Attempt {attempt+1}/24: {last}',flush=True)
+                  time.sleep(12)
+          else:
+              raise SystemExit('Public deployment NOT verified: '+last)
+          PY
