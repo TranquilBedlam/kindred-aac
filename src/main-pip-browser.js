@@ -3,6 +3,7 @@ import {TalkingPortrait} from './maya/talking-portrait.js';
 import {MiloStory,MILO_SCENES} from './milo-story-maya-choice-qa.js';
 import {APPROVED_AUDIO} from './milo-approved-story.js';
 import {createMiloController} from './maya/milo-controller.js';
+import {createMiloView} from './maya/milo-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {englishVoices,voiceLabel,chooseVoice} from './aac/voice-selection.js';
 import {makeRecoveryRecord,addRecoveryToExisting,resetPinWithRecovery} from './recovery.js';
@@ -151,46 +152,14 @@ const renderForest=()=>{
  $('forest-sky').textContent=lesson.completed?'🌈':step>1?'🌤️':'☀️';
  forest.setAttribute('aria-label',lesson.completed?'Pip is home with his blue scarf':step===2?'Pip finds the blue scarf':step===1?'Pip follows clues in the forest':'Pip searches for his lost scarf');
 };
-const renderMilo=()=>{
- $('forest-scene').hidden=true;
- $('forest-caption').textContent=milo.lastResponse;
- $('story-choices').hidden=true;$('learning-options').hidden=false;$('learning-back').hidden=false;
- $('learning-heading').textContent='Milo the Dragon and the Rainy-Day Surprise';
- $('learning-progress').textContent=milo.finished?'The end!':`Scene ${milo.step+1} of ${MILO_SCENES.length}`;
- const scene=milo.scene;
- $('learning-narration').textContent=scene.line;
- $('milo-visual').hidden=false;
- $('milo-visual').textContent=scene.emoji+(milo.boatItem?' '+(milo.boatItem==='04-flower'?'🌼':'🍁'):'');
- $('milo-visual').setAttribute('aria-label',scene.title+' illustration placeholder');
- $('milo-visual').dataset.scene=String(milo.step+1);
- $('milo-response').hidden=!milo.lastResponse;
- $('milo-response').textContent=milo.lastResponse;
- $('milo-prompt').hidden=milo.finished;
- $('milo-prompt').textContent=scene.prompt;
- $('learning-heading').textContent=scene.title;
- $('learning-progress').textContent='Milo the Dragon and the Rainy-Day Surprise · Scene '+(milo.step+1)+' of 7';
- $('milo-help').textContent='Maya will respond to your choice and continue to the next scene. Talk is always available.';
- $('learning-replay').textContent=milo.finished?'Read story again':'🔊 Hear Maya';
- const host=$('learning-options');host.replaceChildren();
- if(milo.finished){const again=document.createElement('button');again.type='button';again.className='learning-option';again.textContent='Read again';again.onclick=()=>{stopMiloAudio();milo.reset();miloController.resetResponse();render();narrateMilo();};host.append(again);return;}
- for(const [label,[emoji]] of Object.entries(scene.actions)){
-  const button=document.createElement('button');button.type='button';button.className='learning-option';
-  const pic=document.createElement('span');pic.textContent=emoji;pic.setAttribute('aria-hidden','true');
-  const word=document.createElement('strong');word.textContent=label;button.append(pic,word);
-  button.setAttribute('aria-label',label);button.disabled=miloController.responding||miloCommunicationPaused;
-  button.onclick=()=>chooseMilo(label);host.append(button);
- }
- // Accessibility escape hatch only; never required after making a choice.
- if(!miloController.responding&&milo.step<6){
-  const skip=document.createElement('button');skip.type='button';skip.className='learning-option milo-continue';skip.textContent='Continue without choosing →';
-  skip.onclick=()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();milo.next();render();narrateMilo();};
-  host.append(skip);
- }
- if(miloController.responding){
-  const recovery=document.createElement('button');recovery.type='button';recovery.className='learning-option milo-continue';recovery.textContent='Continue if audio is unavailable →';
-  recovery.onclick=()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();miloController.resetResponse();if(milo.step===6)milo.finished=true;else milo.next();render();if(!milo.finished)narrateMilo();};host.append(recovery);
- }
-};
+const miloView=createMiloView({
+ get:$,create:tag=>document.createElement(tag),
+ onChoose:label=>chooseMilo(label),
+ onReplay:()=>{stopMiloAudio();milo.reset();miloController.resetResponse();render();narrateMilo();},
+ onSkip:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();milo.next();render();narrateMilo();},
+ onRecover:()=>{if(miloCommunicationPaused||lesson.paused)return;stopMiloAudio();miloController.resetResponse();if(milo.step===6)milo.finished=true;else milo.next();render();if(!milo.finished)narrateMilo();}
+});
+const renderMilo=()=>miloView.render({scene:milo.scene,step:milo.step,finished:milo.finished,lastResponse:milo.lastResponse,boatItem:milo.boatItem,responding:miloController.responding,communicationPaused:miloCommunicationPaused});
 const renderLearning=()=>{
  document.querySelector('.shell')?.classList.toggle('maya-story-active',miloActive);
  $('milo-visual').hidden=!miloActive;
