@@ -117,6 +117,43 @@ if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voices
 const tellStory=()=>{
  $('learning-voice-status').textContent='Maya uses the approved recorded Pip voice for Milo. Choose Milo to hear her, or read other adventures silently.';
 };
+// Dedicated Pip recordings for the Milo experience. AAC speech uses the independent device voice.
+let miloAudio=null, miloAudioToken=0, miloResponding=false, miloCommunicationPaused=false;
+const stopMiloAudio=()=>{
+ miloAudioToken++;
+ if(miloAudio){miloAudio.onended=null;miloAudio.onerror=null;miloAudio.pause();miloAudio.removeAttribute('src');miloAudio=null;}
+ mayaPortrait?.end();
+};
+const playMiloClip=(file,onEnd)=>{
+ stopMiloAudio();
+ const token=miloAudioToken;
+ if(!file){$('learning-voice-status').textContent='Pip audio file is missing. The written story remains available.';return;}
+ const a=new Audio(file);miloAudio=a;
+ a.onplay=()=>{if(token!==miloAudioToken)return;if(mayaEnabled)mayaPortrait?.begin();$('learning-voice-status').textContent='Maya is speaking.';};
+ a.onended=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();miloAudio=null;if(!miloCommunicationPaused&&onEnd)onEnd();};
+ a.onerror=()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Pip MP3 unavailable. No replacement voice will be used.';miloAudio=null;};
+ a.play().catch(()=>{if(token!==miloAudioToken)return;mayaPortrait?.end();$('learning-voice-status').textContent='Tap Hear Maya to enable audio, or continue with the picture choices.';});
+};
+const narrateMilo=()=>{if(!miloCommunicationPaused)playMiloClip(APPROVED_AUDIO.narration[milo.step]);};
+const chooseMilo=(label)=>{
+ if(miloResponding||miloCommunicationPaused||lesson.paused)return;
+ const {response,key}=milo.choose(label);
+ stopMiloAudio();miloResponding=true;
+ render();
+ $('milo-response').hidden=false;$('milo-response').textContent=response||'';
+ $('learning-options').querySelectorAll('button').forEach(b=>b.disabled=true);
+ if(key==='07-restart'){milo.reset();miloResponding=false;render();narrateMilo();return;}
+ const complete=()=>{
+  if(miloCommunicationPaused||lesson.paused)return;
+  miloResponding=false;
+  if(milo.step===6){milo.finished=true;render();$('learning-voice-status').textContent='The end.';}
+  else {milo.next();render();narrateMilo();}
+ };
+ const file=APPROVED_AUDIO.choices[key];
+ // The real recording ending is the gateway. If missing, keep the scene and
+ // show a manual recovery control instead of inventing timing or synthetic Maya.
+ if(file)playMiloClip(file,complete);
+};
 const mayaWelcome="Hi! I'm Maya. Would you like to help Milo the dragon on a rainy-day adventure, explore the forest, or travel into space? Tap a story picture to begin.";
 const renderForest=()=>{
  const forest=$('forest-scene');forest.hidden=lesson.choice!=='Bears';if(forest.hidden)return;
