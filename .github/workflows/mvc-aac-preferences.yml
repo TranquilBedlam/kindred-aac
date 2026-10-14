@@ -1,0 +1,24 @@
+name: MVC AAC preferences regression
+on:
+  push:
+    branches: [refactor/mvc-aac-preference-service]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and all unit regressions
+        run: |
+          node --check src/main-pip-browser.js
+          node --check src/aac/preference-store.js
+          node --test tests/aac-preference-store.test.mjs tests/milo-view.test.mjs tests/milo-controller.test.mjs tests/pip-audio-service.test.mjs tests/pip-regression.test.mjs tests/learning.test.mjs tests/reorder.test.mjs tests/aac-voice.test.mjs
+      - name: Chromium story and AAC regressions
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+          npx playwright test tests/pip-regression.browser.spec.cjs tests/browser-arrange.spec.cjs --browser chromium --workers=1 --reporter=list
