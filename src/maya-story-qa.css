@@ -1,0 +1,20 @@
+/* Isolated Maya-led Milo QA presentation. Keeps existing Kindred AAC portrait and Talk pad. */
+.shell.maya-story-active .intro{padding:12px 0 4px}
+.shell.maya-story-active .intro h1{font-size:clamp(1.4rem,3vw,2rem)}
+.shell.maya-story-active .story-scene{display:grid;grid-template-columns:minmax(138px,26%) minmax(0,1fr);align-items:start;gap:18px}
+.shell.maya-story-active #maya-portrait{position:sticky;top:14px;max-width:100%;width:100%;margin:0}
+.shell.maya-story-active .story-content{min-width:0;display:flex;flex-direction:column;gap:9px}
+.shell.maya-story-active #learning-progress{font-size:.92rem;font-weight:700;letter-spacing:.02em;color:#326d68}
+.shell.maya-story-active #learning-heading{font-size:clamp(1.75rem,3.6vw,2.6rem);line-height:1.12;margin:5px 0}
+.shell.maya-story-active #milo-visual{display:flex!important;align-items:center;justify-content:center;min-height:230px;order:1;font-size:clamp(4rem,9vw,7rem)!important;letter-spacing:.09em;background:linear-gradient(155deg,#c5e1f6 0%,#dfedf7 55%,#bcd9c8 100%);border-radius:24px;border:3px solid #afcabb;box-shadow:0 9px 28px #254d4b1b;overflow:hidden}
+.shell.maya-story-active #learning-narration{order:2;max-height:132px;overflow-y:auto;line-height:1.5;padding:10px 14px;background:#f4f9f5;border-radius:12px;font-size:.95rem;border:1px solid #d7e9e0}
+.shell.maya-story-active #milo-prompt{order:3;font-size:1.25rem!important;text-align:center;margin:8px 0!important}
+.shell.maya-story-active #milo-response{order:4;background:#fff4cf;padding:12px 16px;border-radius:14px;font-weight:700}
+.shell.maya-story-active #learning-options{order:5;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.shell.maya-story-active #learning-options .learning-option:not(.milo-continue){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:140px;border-radius:20px;border:3px solid #558d89;background:#fff8d9;box-shadow:0 5px 0 #b5c9bd;font-size:1.1rem}
+.shell.maya-story-active #learning-options .learning-option span{font-size:clamp(2.6rem,6vw,4rem);line-height:1.1}
+.shell.maya-story-active #learning-options .milo-continue{grid-column:1/-1;justify-self:center;font-size:.9rem;background:#f3f6f8}
+.shell.maya-story-active .story-actions{order:6;display:flex;justify-content:center;gap:12px}
+.shell.maya-story-active #learning-voice-status{order:7}
+.shell.maya-story-active .story-content>p[hidden],.shell.maya-story-active .story-content>div[hidden]{display:none!important}
+@media(max-width:680px){.shell.maya-story-active .story-scene{display:flex;flex-direction:column;gap:10px}.shell.maya-story-active #maya-portrait{position:relative;max-height:165px;width:min(220px,55vw);align-self:center}.shell.maya-story-active .story-content{width:100%}.shell.maya-story-active #milo-visual{min-height:165px}.shell.maya-story-active #learning-options .learning-option:not(.milo-continue){min-height:120px}.shell.maya-story-active #learning-narration{max-height:100px}}
