@@ -5,6 +5,7 @@ import {APPROVED_AUDIO} from './milo-approved-story.js';
 import {createMiloController} from './maya/milo-controller.js';
 import {createMiloView} from './maya/milo-view.js';
 import {renderForestScene} from './maya/forest-view.js';
+import {renderLearningChoices} from './maya/learning-choice-view.js';
 import {createPipAudioPlayer} from './aac/pip-audio-service.js';
 import {createAacPreferenceStore} from './aac/preference-store.js';
 import {createVocabularyStore} from './aac/vocabulary-store.js';
@@ -163,15 +164,9 @@ const renderLearning=()=>{
  $('learning-narration').textContent=!lesson.choice?mayaWelcome:scene?scene.line:`The end of our ${lesson.choice==='Bears'?'forest':'space'} adventure! Choose another story or play again.`;
  $('forest-caption').textContent=lesson.choice==='Bears'?lesson.lastEvent:'';
  $('learning-replay').textContent=!lesson.choice?'🔊 Hear Maya':lesson.completed?'Play story again':'🔊 Hear story again';
- const options=$('learning-options');options.replaceChildren();
- if(!scene)return;
- for(const [name,emoji] of scene.choices){
-  const button=document.createElement('button');button.type='button';button.className='learning-option';
-  button.setAttribute('aria-label',name);
-  const picture=document.createElement('span');picture.textContent=emoji;picture.setAttribute('aria-hidden','true');
-  const word=document.createElement('strong');word.textContent=name;
-  button.append(picture,word);
-  button.onclick=()=>{
+ renderLearningChoices({
+  host:$('learning-options'),scene,create:tag=>document.createElement(tag),
+  onChoose:name=>{
    if(lesson.paused)return;
    const response=scene.responses[name];
    lesson.explore(name);
@@ -180,9 +175,8 @@ const renderLearning=()=>{
    const next=lesson.completed?' The end.':(' '+scenes[lesson.step].line);
    const branch=lesson.choice==='Bears'&&lesson.step===2?(lesson.path[0]==='Follow the footprints'?' The footprints helped Pip find the scarf.':' The feather helped Pip find his bird friend.') : '';
    tellStory(response+branch+next);
-  };
-  options.append(button);
- }
+  }
+ });
 };
 $('learning-replay').onclick=()=>{
  if(lesson.paused)return;
